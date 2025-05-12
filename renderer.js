@@ -17,6 +17,7 @@ const closeSettingsPopup = document.getElementById('closeSettingsPopup');
 const saveSettingsButton = document.getElementById('saveSettingsButton');
 const selectedVideoContainer = document.getElementById('selectedVideoContainer');
 const selectedVideoTitle = document.getElementById('selectedVideoTitle');
+const backButton = document.getElementById('backButton');
 
 // Title bar controls
 const minimizeBtn = document.getElementById('minimizeBtn');
@@ -158,6 +159,9 @@ function resetUI() {
     selectedVideoContainer.style.display = 'none';
     selectedVideoTitle.textContent = '';
     
+    // Hide back button
+    backButton.style.display = 'none';
+    
     // Reset selected video URL
     selectedVideoUrl = '';
     
@@ -204,6 +208,9 @@ downloadButton.addEventListener('click', () => {
     // Hide the search results and download button
     searchResults.style.display = 'none';
     downloadButton.style.display = 'none';
+    
+    // Hide the back button
+    backButton.style.display = 'none';
     
     // Show progress
     progressContainer.style.display = 'block';
@@ -350,6 +357,9 @@ function displaySearchResults(results) {
             // Hide search input section
             document.querySelector('.search-container').style.display = 'none';
             
+            // Show back button
+            backButton.style.display = 'flex';
+            
             // Focus download button
             downloadButton.focus();
         });
@@ -359,6 +369,24 @@ function displaySearchResults(results) {
     
     searchResults.style.display = 'block';
 }
+
+// Back button functionality
+backButton.addEventListener('click', () => {
+    // Show search container again
+    document.querySelector('.search-container').style.display = 'flex';
+    
+    // Show search results
+    searchResults.style.display = 'block';
+    
+    // Hide selected video container
+    selectedVideoContainer.style.display = 'none';
+    
+    // Hide back button
+    backButton.style.display = 'none';
+    
+    // Clear the selection
+    selectedVideoUrl = '';
+});
 
 // Initialize the default path when the script loads
 initializePath(); 

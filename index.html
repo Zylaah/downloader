@@ -139,6 +139,32 @@
             overflow: hidden;
         }
 
+        .back-button {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 35px;
+            height: 35px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .back-button:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .back-button svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--gray);
+        }
+
         h1 {
             color: var(--primary);
             margin-bottom: 30px;
@@ -534,7 +560,7 @@
             background-color: var(--primary-hover);
         }
 
-        /* Add selected video display */
+        /* Selected video display */
         .selected-video-container {
             margin-top: 15px;
             margin-bottom: 20px;
@@ -605,6 +631,12 @@
     
     <div class="app-content-wrapper">
         <div class="app-container">
+            <div class="back-button" id="backButton" title="Retour aux résultats">
+                <svg viewBox="0 0 24 24">
+                    <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+                </svg>
+            </div>
+            
             <h1>Audio YouTube</h1>
 
             <div class="search-section">
