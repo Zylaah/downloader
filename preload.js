@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
   selectDownloadPath: () => ipcRenderer.invoke('select-download-path'),
   getDefaultDownloadPath: () => ipcRenderer.invoke('get-default-download-path'),
+  searchYoutube: (query, maxResults) => ipcRenderer.invoke('search-youtube', query, maxResults),
   minimizeWindow: () => ipcRenderer.send('minimize-window'),
   maximizeRestoreWindow: () => ipcRenderer.send('maximize-restore-window'),
   closeWindow: () => ipcRenderer.send('close-window'),

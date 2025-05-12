@@ -6,6 +6,9 @@ const setPathButton = document.getElementById('setPathButton');
 const progressContainer = document.getElementById('progressContainer');
 const progressBarFill = document.getElementById('progressBarFill');
 const progressBarText = document.getElementById('progressBarText');
+const searchQuery = document.getElementById('searchQuery');
+const searchButton = document.getElementById('searchButton');
+const searchResults = document.getElementById('searchResults');
 
 // Title bar controls
 const minimizeBtn = document.getElementById('minimizeBtn');
@@ -242,6 +245,85 @@ downloadButton.addEventListener('click', () => {
         resetListeners();
     });
 });
+
+// Search functionality
+searchButton.addEventListener('click', performSearch);
+searchQuery.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        performSearch();
+    }
+});
+
+// Function to search for YouTube videos
+async function performSearch() {
+    const query = searchQuery.value.trim();
+    if (!query) {
+        displayUserMessage('Please enter a search query.', 'error');
+        return;
+    }
+
+    // Show loading state
+    searchButton.disabled = true;
+    searchButton.textContent = 'Searching...';
+    searchResults.innerHTML = '<div class="search-result-item">Searching...</div>';
+    searchResults.style.display = 'block';
+
+    try {
+        const result = await window.electronAPI.searchYoutube(query, 10);
+        
+        if (result.error) {
+            displayUserMessage(result.error, 'error');
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        if (result.results && result.results.length > 0) {
+            displaySearchResults(result.results);
+        } else {
+            searchResults.innerHTML = '<div class="search-result-item">No results found</div>';
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        displayUserMessage('Error performing search.', 'error');
+        searchResults.style.display = 'none';
+    } finally {
+        searchButton.disabled = false;
+        searchButton.textContent = 'Rechercher';
+    }
+}
+
+// Function to display search results
+function displaySearchResults(results) {
+    searchResults.innerHTML = '';
+    
+    results.forEach(video => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'search-result-item';
+        
+        // Use default thumbnail if none is provided
+        const thumbnailUrl = video.thumbnail || 'https://via.placeholder.com/120x68?text=No+Preview';
+        
+        resultItem.innerHTML = `
+            <img src="${thumbnailUrl}" class="search-result-thumbnail" onerror="this.src='https://via.placeholder.com/120x68?text=Error'">
+            <div class="search-result-info">
+                <div class="search-result-title">${video.title}</div>
+                <div class="search-result-duration">${video.duration}</div>
+            </div>
+        `;
+        
+        // Add click event to select this video
+        resultItem.addEventListener('click', () => {
+            youtubeUrlInput.value = video.url;
+            searchResults.style.display = 'none';
+            // Optional: Focus the download button
+            downloadButton.focus();
+        });
+        
+        searchResults.appendChild(resultItem);
+    });
+    
+    searchResults.style.display = 'block';
+}
 
 // Initialize the default path when the script loads
 initializePath(); 

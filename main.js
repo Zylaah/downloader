@@ -195,3 +195,56 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
     event.reply('download-error', `Failed to download audio: ${error.message || 'Unknown error'}`);
   }
 });
+
+// Add a search handler for YouTube videos
+ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
+  try {
+    if (!query || !query.trim()) {
+      return { error: 'Please enter a search query.' };
+    }
+
+    console.log(`Searching YouTube for: ${query}`);
+    
+    // Format search query for yt-dlp
+    const searchQuery = `ytsearch${maxResults}:${query.trim()}`;
+    
+    // Create a promise to handle the result
+    return new Promise((resolve, reject) => {
+      // Array to store search results
+      const searchResults = [];
+      
+      // Use yt-dlp to search
+      ytDlpWrap.execPromise([
+        searchQuery,
+        '--flat-playlist',  // Don't extract video info, just get the playlist
+        '--format=best',    // Not downloading, but needed for some extractors
+        '--print', '%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s'  // Custom output format
+      ])
+      .then(output => {
+        // Parse the output to extract video information
+        const lines = output.split('\n').filter(line => line.trim());
+        
+        lines.forEach(line => {
+          const [title, url, duration, thumbnail] = line.split('::');
+          if (title && url) {
+            searchResults.push({
+              title,
+              url,
+              duration: duration || 'Unknown',
+              thumbnail: thumbnail || ''
+            });
+          }
+        });
+        
+        resolve({ results: searchResults });
+      })
+      .catch(error => {
+        console.error('Error during YouTube search:', error);
+        reject({ error: `Failed to search: ${error.message || 'Unknown error'}` });
+      });
+    });
+  } catch (error) {
+    console.error('YouTube search error:', error);
+    return { error: `Failed to search: ${error.message || 'Unknown error'}` };
+  }
+});
