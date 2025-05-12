@@ -57,8 +57,8 @@ ipcMain.handle('select-download-path', async () => {
 
 function createWindow () {
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 800,
     frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -218,20 +218,40 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
         searchQuery,
         '--flat-playlist',  // Don't extract video info, just get the playlist
         '--format=best',    // Not downloading, but needed for some extractors
-        '--print', '%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s'  // Custom output format
+        '--print', 'thumbnail::%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s'  // Custom output format with a marker
       ])
       .then(output => {
         // Parse the output to extract video information
         const lines = output.split('\n').filter(line => line.trim());
         
         lines.forEach(line => {
-          const [title, url, duration, thumbnail] = line.split('::');
-          if (title && url) {
+          if (!line.startsWith('thumbnail::')) return; // Skip lines that don't have our marker
+          
+          const parts = line.substring('thumbnail::'.length).split('::');
+          if (parts.length >= 3) {
+            const [title, url, duration, thumbnail] = parts;
+            
+            // Process thumbnail URL
+            let thumbnailUrl = thumbnail || '';
+            // Ensure the URL is properly formatted
+            if (thumbnailUrl && !thumbnailUrl.startsWith('http')) {
+              thumbnailUrl = thumbnailUrl.startsWith('//') ? 'https:' + thumbnailUrl : 'https://' + thumbnailUrl;
+            }
+            
+            // If we still don't have a valid thumbnail, try to extract from standard YouTube format
+            if (!thumbnailUrl && url && url.includes('youtube.com')) {
+              // Try to extract video ID and construct thumbnail
+              const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^\/\?\&]+)/);
+              if (videoIdMatch && videoIdMatch[1]) {
+                thumbnailUrl = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`;
+              }
+            }
+            
             searchResults.push({
-              title,
-              url,
+              title: title || 'Unknown Title',
+              url: url || '',
               duration: duration || 'Unknown',
-              thumbnail: thumbnail || ''
+              thumbnail: thumbnailUrl
             });
           }
         });
