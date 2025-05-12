@@ -151,6 +151,9 @@ function resetUI() {
     searchQuery.value = '';
     searchResults.style.display = 'none';
     
+    // Show search input again
+    document.querySelector('.search-container').style.display = 'flex';
+    
     // Reset selected video display
     selectedVideoContainer.style.display = 'none';
     selectedVideoTitle.textContent = '';
@@ -233,8 +236,11 @@ downloadButton.addEventListener('click', () => {
     window.electronAPI.onDownloadComplete((message) => {
         updateProgressBar(100);
         
-        // Hide progress and show completion
+        // Hide progress and selected video container
         progressContainer.style.display = 'none';
+        selectedVideoContainer.style.display = 'none';
+        
+        // Show completion notification
         completionNotification.style.display = 'block';
         
         // Show a toast notification
@@ -340,6 +346,9 @@ function displaySearchResults(results) {
             
             // Hide search results
             searchResults.style.display = 'none';
+            
+            // Hide search input section
+            document.querySelector('.search-container').style.display = 'none';
             
             // Focus download button
             downloadButton.focus();
