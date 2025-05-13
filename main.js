@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store');
-const ffmpeg = require('ffmpeg-static');
+const originalFfmpegPath = require('ffmpeg-static'); // Get the original path from the module
 
 const store = new Store();
 const path = require('path');
@@ -25,6 +25,14 @@ if (fs.existsSync(path.join(__dirname, 'node_modules', 'yt-dlp-wrap', 'bin', 'yt
 }
 
 const ytDlpWrap = ytDlpPath ? new YTDlpWrap(ytDlpPath) : new YTDlpWrap();
+
+// Determine the correct ffmpeg path to use
+let ffmpegPathToUse = originalFfmpegPath;
+if (app.isPackaged) {
+  // When packaged, the path from ffmpeg-static might point inside app.asar.
+  // We adjust it to point to the unpacked location, assuming asarUnpack is configured.
+  ffmpegPathToUse = originalFfmpegPath.replace('app.asar', 'app.asar.unpacked');
+}
 
 // Handle getting the default download path
 ipcMain.handle('get-default-download-path', async () => {
@@ -152,7 +160,8 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
     
     // --- IMPORTANT --- 
     // Use ffmpeg-static to get the path to ffmpeg
-    const ffmpegPath = ffmpeg;
+    // const ffmpegPath = ffmpeg; // This was the previous way
+    // We now use the globally resolved `ffmpegPathToUse`
 
     const execArgs = [
       url,
@@ -164,8 +173,8 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       '--progress' // Enable progress reporting
     ];
 
-    if (ffmpegPath) {
-      execArgs.push('--ffmpeg-location', ffmpegPath);
+    if (ffmpegPathToUse) { // Check if the resolved ffmpegPathToUse is available
+      execArgs.push('--ffmpeg-location', ffmpegPathToUse);
     }
 
     // Configure yt-dlp to download audio only, in mp3 format
