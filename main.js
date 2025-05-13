@@ -228,9 +228,13 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
         searchQuery,
         '--flat-playlist',  // Don't extract video info, just get the playlist
         '--format=best',    // Not downloading, but needed for some extractors
-        '--print', 'thumbnail::%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s'  // Custom output format with a marker
+        '--print', 'thumbnail::%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s',
+        '--encoding', 'utf-8' // Explicitly set output encoding
       ])
       .then(output => {
+        // Log the raw output from yt-dlp for debugging
+        console.log('Raw yt-dlp output for search:\n', output);
+
         // Parse the output to extract video information
         const lines = output.split('\n').filter(line => line.trim());
         
