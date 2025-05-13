@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store');
+const ffmpeg = require('ffmpeg-static');
 
 const store = new Store();
 const path = require('path');
@@ -150,8 +151,8 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
     }
     
     // --- IMPORTANT --- 
-    // If ffmpeg is not in PATH, uncomment and set the correct path to the directory containing ffmpeg.exe
-    // const ffmpegPath = 'YOUR_PATH_TO_FFMPEG_BIN_DIRECTORY'; // e.g., 'C:/ffmpeg/bin'
+    // Use ffmpeg-static to get the path to ffmpeg
+    const ffmpegPath = ffmpeg;
 
     const execArgs = [
       url,
@@ -163,9 +164,9 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       '--progress' // Enable progress reporting
     ];
 
-    // if (ffmpegPath) {
-    //   execArgs.push('--ffmpeg-location', ffmpegPath);
-    // }
+    if (ffmpegPath) {
+      execArgs.push('--ffmpeg-location', ffmpegPath);
+    }
 
     // Configure yt-dlp to download audio only, in mp3 format
     await ytDlpWrap.exec(execArgs)
