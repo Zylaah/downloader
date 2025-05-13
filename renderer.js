@@ -172,6 +172,12 @@ function resetUI() {
     // Hide progress
     progressContainer.style.display = 'none';
     
+    // Clear any running simulation
+    if (window.conversionSimulationInterval) {
+        clearInterval(window.conversionSimulationInterval);
+        window.conversionSimulationInterval = null;
+    }
+    
     // Focus on search field
     searchQuery.focus();
 }
@@ -237,21 +243,19 @@ downloadButton.addEventListener('click', () => {
             }
         }
         
+        // Scale download progress to only use 70% of the progress bar
+        // This reserves 30% for the conversion phase
+        percentValueForBar = (percentValueForBar * 0.7);
+        
         updateProgressBar(percentValueForBar);
     });
 
     window.electronAPI.onDownloadComplete((message) => {
-        updateProgressBar(100);
+        // Simulate conversion progress from 70% to 100%
+        simulateConversionProgress(message);
         
-        // Hide progress and selected video container
-        progressContainer.style.display = 'none';
+        // Hide selected video container
         selectedVideoContainer.style.display = 'none';
-        
-        // Show completion notification
-        completionNotification.style.display = 'block';
-        
-        // Show a toast notification
-        displayUserMessage('Téléchargement terminé avec succès !', 'complete');
         
         // Reset listeners
         resetListeners();
@@ -264,6 +268,11 @@ downloadButton.addEventListener('click', () => {
         progressContainer.style.display = 'none';
         downloadButton.style.display = 'inline-block';
         
+        // Make sure any running simulation is cleared
+        if (window.conversionSimulationInterval) {
+            clearInterval(window.conversionSimulationInterval);
+        }
+        
         resetListeners();
     });
 
@@ -271,6 +280,11 @@ downloadButton.addEventListener('click', () => {
         // Reset UI
         progressContainer.style.display = 'none';
         downloadButton.style.display = 'inline-block';
+        
+        // Make sure any running simulation is cleared
+        if (window.conversionSimulationInterval) {
+            clearInterval(window.conversionSimulationInterval);
+        }
         
         resetListeners();
     });
@@ -387,6 +401,44 @@ backButton.addEventListener('click', () => {
     // Clear the selection
     selectedVideoUrl = '';
 });
+
+// Add a function to simulate conversion progress
+function simulateConversionProgress(completionMessage) {
+    const startPercent = 70;
+    const endPercent = 100;
+    const duration = 3000; // 3 seconds for conversion simulation
+    const steps = 30; // Number of steps
+    const increment = (endPercent - startPercent) / steps;
+    const interval = duration / steps;
+    
+    let currentPercent = startPercent;
+    let step = 0;
+    
+    // Immediately show 70%
+    updateProgressBar(currentPercent);
+    
+    // Clear any existing simulation
+    if (window.conversionSimulationInterval) {
+        clearInterval(window.conversionSimulationInterval);
+    }
+    
+    window.conversionSimulationInterval = setInterval(() => {
+        step++;
+        currentPercent = startPercent + (step * increment);
+        
+        updateProgressBar(currentPercent);
+        
+        if (step >= steps) {
+            clearInterval(window.conversionSimulationInterval);
+            window.conversionSimulationInterval = null;
+            progressContainer.style.display = 'none';
+            
+            // Only now show completion notification and message
+            completionNotification.style.display = 'block';
+            displayUserMessage('Téléchargement terminé avec succès !', 'complete');
+        }
+    }, interval);
+}
 
 // Initialize the default path when the script loads
 initializePath(); 

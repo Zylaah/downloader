@@ -590,7 +590,7 @@
             right: 15px; /* Positioned opposite to back-button */
             width: 35px;
             height: 35px;
-            background-color: rgba(0, 0, 0, 0.05);
+            background-color: transparent;
             border-radius: 50%;
             display: flex; /* Ensure it displays */
             align-items: center;
@@ -599,10 +599,6 @@
             transition: var(--transition);
             z-index: 10;
             -webkit-app-region: no-drag; /* Ensure it's clickable */
-        }
-
-        .app-container .settings-button:hover {
-            background-color: rgba(0, 0, 0, 0.1);
         }
 
         .app-container .settings-button svg {
