@@ -32,10 +32,7 @@
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!**/node_modules/yt-dlp-wrap/bin/yt-dlp.exe",
-      "!**/node_modules/yt-dlp-wrap/bin/yt-dlp_macos",
-      "!**/node_modules/yt-dlp-wrap/bin/yt-dlp_linux"
+      "**/*"
     ],
     "win": {
       "target": "nsis",
@@ -50,7 +47,8 @@
       "icon": "build/icon.png"
     },
     "asarUnpack": [
-      "**/node_modules/yt-dlp-wrap/**"
+      "**/node_modules/ffmpeg-static/bin/**",
+      "**/node_modules/yt-dlp-wrap/bin/**"
     ]
   }
 }

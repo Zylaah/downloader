@@ -1,38 +1,69 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store');
-const originalFfmpegPath = require('ffmpeg-static'); // Get the original path from the module
+const originalFfmpegPath = require('ffmpeg-static');
+const os = require('os'); // Added os module
 
 const store = new Store();
 const path = require('path');
 const fs = require('fs');
 const YTDlpWrap = require('yt-dlp-wrap').default;
 
-// Initialize yt-dlp-wrap. You might need to specify the path to yt-dlp binary
-// if it's not in your PATH or in the default download location.
-// const ytDlpWrap = new YTDlpWrap(); 
-// For development, let's try to find it in node_modules
-let ytDlpPath;
-if (fs.existsSync(path.join(__dirname, 'node_modules', 'yt-dlp-wrap', 'bin', 'yt-dlp'))) {
-    ytDlpPath = path.join(__dirname, 'node_modules', 'yt-dlp-wrap', 'bin', 'yt-dlp');
-} else if (fs.existsSync(path.join(__dirname, 'node_modules', '.bin', 'yt-dlp'))) {
-    ytDlpPath = path.join(__dirname, 'node_modules', '.bin', 'yt-dlp');
-} else {
-    // As a last resort, try to download it. This might take time.
-    console.log('yt-dlp binary not found in node_modules, attempting to download...');
-    // YTDlpWrap.downloadFromGithub().then(path => ytDlpPath = path).catch(console.error);
-    // For now, let's assume it will be in the PATH or user needs to install it globally
-    // Or handle this more gracefully in a real app (e.g. prompt user)
-}
-
-const ytDlpWrap = ytDlpPath ? new YTDlpWrap(ytDlpPath) : new YTDlpWrap();
-
 // Determine the correct ffmpeg path to use
 let ffmpegPathToUse = originalFfmpegPath;
 if (app.isPackaged) {
-  // When packaged, the path from ffmpeg-static might point inside app.asar.
-  // We adjust it to point to the unpacked location, assuming asarUnpack is configured.
   ffmpegPathToUse = originalFfmpegPath.replace('app.asar', 'app.asar.unpacked');
 }
+console.log('[Main Process] ffmpeg path determined as:', ffmpegPathToUse);
+
+// Determine the yt-dlp executable name based on OS
+let ytDlpExecutableName;
+switch (os.platform()) {
+  case 'win32':
+    ytDlpExecutableName = 'yt-dlp.exe';
+    break;
+  case 'darwin':
+    ytDlpExecutableName = 'yt-dlp_macos';
+    break;
+  case 'linux':
+    ytDlpExecutableName = 'yt-dlp_linux';
+    break;
+  default:
+    console.error('[Main Process] Unsupported platform for yt-dlp:', os.platform());
+    // Potentially fallback or exit, for now, YTDlpWrap might try its default
+}
+
+// Determine the path to the yt-dlp executable
+let ytDlpBinaryPath; 
+if (app.isPackaged) {
+  ytDlpBinaryPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'yt-dlp-wrap', 'bin', ytDlpExecutableName);
+  if (!fs.existsSync(ytDlpBinaryPath)) {
+    console.error(`[Main Process] CRITICAL: Packaged yt-dlp executable not found at ${ytDlpBinaryPath}`);
+    // ytDlpBinaryPath will remain undefined, YTDlpWrap will use its default (likely 'yt-dlp')
+    // which will probably fail with ENOENT if not in PATH on the target system.
+    ytDlpBinaryPath = undefined; // Explicitly set to undefined
+  } else {
+    console.log('[Main Process] Using packaged yt-dlp executable at:', ytDlpBinaryPath);
+  }
+} else {
+  // Development: Try common locations for yt-dlp binary
+  const devPath1 = path.join(__dirname, 'node_modules', 'yt-dlp-wrap', 'bin', ytDlpExecutableName);
+  const devPath2 = path.join(__dirname, 'node_modules', '.bin', ytDlpExecutableName); // Less common for yt-dlp-wrap but check anyway
+
+  if (fs.existsSync(devPath1)) {
+    ytDlpBinaryPath = devPath1;
+  } else if (fs.existsSync(devPath2)) {
+    ytDlpBinaryPath = devPath2;
+  }
+  if (ytDlpBinaryPath) {
+    console.log('[Main Process] Using development yt-dlp executable at:', ytDlpBinaryPath);
+  } else {
+    console.log('[Main Process] yt-dlp executable not found in development paths, YTDlpWrap will use its default.');
+  }
+}
+
+// Initialize yt-dlp-wrap with the determined path if available
+const ytDlpWrap = ytDlpBinaryPath ? new YTDlpWrap(ytDlpBinaryPath) : new YTDlpWrap();
+console.log('[Main Process] yt-dlp binary path used for YTDlpWrap init:', ytDlpBinaryPath || 'default (not found, relying on PATH)');
 
 // Handle getting the default download path
 ipcMain.handle('get-default-download-path', async () => {
@@ -215,52 +246,38 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
 
     console.log(`Searching YouTube for: ${query}`);
     
-    // Format search query for yt-dlp
     const searchQuery = `ytsearch${maxResults}:${query.trim()}`;
     
-    // Create a promise to handle the result
-    return new Promise((resolve, reject) => {
-      // Array to store search results
+    return new Promise((resolve) => { // No reject, always resolve with status
       const searchResults = [];
       
-      // Use yt-dlp to search
       ytDlpWrap.execPromise([
         searchQuery,
-        '--flat-playlist',  // Don't extract video info, just get the playlist
-        '--format=best',    // Not downloading, but needed for some extractors
+        '--flat-playlist',
+        '--format=best',
         '--print', 'thumbnail::%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s',
-        '--encoding', 'utf-8' // Explicitly set output encoding
+        '--encoding', 'utf-8'
       ])
       .then(output => {
-        // Log the raw output from yt-dlp for debugging
         console.log('Raw yt-dlp output for search:\n', output);
-
-        // Parse the output to extract video information
         const lines = output.split('\n').filter(line => line.trim());
         
         lines.forEach(line => {
-          if (!line.startsWith('thumbnail::')) return; // Skip lines that don't have our marker
+          if (!line.startsWith('thumbnail::')) return;
           
           const parts = line.substring('thumbnail::'.length).split('::');
           if (parts.length >= 3) {
             const [title, url, duration, thumbnail] = parts;
-            
-            // Process thumbnail URL
             let thumbnailUrl = thumbnail || '';
-            // Ensure the URL is properly formatted
             if (thumbnailUrl && !thumbnailUrl.startsWith('http')) {
               thumbnailUrl = thumbnailUrl.startsWith('//') ? 'https:' + thumbnailUrl : 'https://' + thumbnailUrl;
             }
-            
-            // If we still don't have a valid thumbnail, try to extract from standard YouTube format
             if (!thumbnailUrl && url && url.includes('youtube.com')) {
-              // Try to extract video ID and construct thumbnail
-              const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^\/\?\&]+)/);
+              const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^\/\?&]+)/);
               if (videoIdMatch && videoIdMatch[1]) {
                 thumbnailUrl = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`;
               }
             }
-            
             searchResults.push({
               title: title || 'Unknown Title',
               url: url || '',
@@ -269,16 +286,21 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
             });
           }
         });
-        
         resolve({ results: searchResults });
       })
       .catch(error => {
-        console.error('Error during YouTube search:', error);
-        reject({ error: `Failed to search: ${error.message || 'Unknown error'}` });
+        console.error('[Main Process] Error during YouTube search:', error);
+        resolve({ 
+          error: `Failed to search: ${error.message || 'Unknown error'}`,
+          stack: error.stack // Include stack for more details
+        });
       });
     });
   } catch (error) {
-    console.error('YouTube search error:', error);
-    return { error: `Failed to search: ${error.message || 'Unknown error'}` };
+    console.error('[Main Process] Synchronous error in search-youtube handler:', error);
+    return { 
+      error: `Synchronous handler error: ${error.message || 'Unknown error'}`,
+      stack: error.stack
+    };
   }
 });
