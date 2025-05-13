@@ -1,5 +1,5 @@
 {
-  "name": "yt-audio-downloader",
+  "name": "audio-tube",
   "version": "1.0.0",
   "description": "A simple YouTube audio downloader.",
   "main": "main.js",
@@ -27,7 +27,7 @@
   },
   "build": {
     "appId": "com.example.ytaudiodownloader",
-    "productName": "YT Audio Downloader",
+    "productName": "AudioTube",
     "directories": {
       "output": "dist"
     },
