@@ -1,0 +1,81 @@
+.app-content-wrapper {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 38px;
+    width: 100%;
+}
+
+.app-container {
+    background-color: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    width: 100%;
+    max-width: 550px;
+    padding: 40px;
+    position: relative;
+    overflow: hidden;
+}
+
+.back-button {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 35px;
+    height: 35px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 10;
+}
+
+.back-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.back-button svg {
+    width: 20px;
+    height: 20px;
+    fill: var(--gray);
+}
+
+h1 {
+    color: var(--primary);
+    margin-bottom: 30px;
+    font-size: 28px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* New styles for settings button in app-container */
+.app-container .settings-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 35px;
+    height: 35px;
+    background-color: transparent;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 10;
+    -webkit-app-region: no-drag;
+}
+
+.app-container .settings-button svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--gray);
+}
+
+.app-container .settings-button:hover svg {
+    fill: var(--primary-hover);
+} 
