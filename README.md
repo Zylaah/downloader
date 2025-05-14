@@ -11,11 +11,11 @@ AudioTube Downloader is a desktop application built with Electron that allows us
 *   **User-Friendly Interface:** Clean and intuitive interface for a seamless experience.
 *   **Custom Titlebar:** Native-like window controls (minimize, maximize, close) for a consistent desktop feel.
 
-##How to install ?
+## How to install ?
 
 Just download the lastest release and use the setup file to install it on your Windows computer !
 
-#If you want to build it yourself
+# If you want to build it yourself
 
 ## Prerequisites
 
