@@ -162,19 +162,18 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
   }
 
   let outputFilePath;
+  let conversionSignalSent = false;
+  let downloadReportedAsMostlyComplete = false;
 
   try {
     if (downloadPath && fs.existsSync(downloadPath)) {
-      // If a download path is provided, construct the output template for yt-dlp
-      // This will save the file as 'Video Title.mp3' in the chosen directory.
       outputFilePath = path.join(downloadPath, '%(title)s.%(ext)s');
       event.reply('download-progress', `Preparing to download to: ${downloadPath}`);
       console.log(`Attempting to download audio for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
     } else {
-      // Fallback: Prompt user for save location if no valid path is provided
       const { filePath, canceled } = await dialog.showSaveDialog({
         title: 'Enregistrer l\'audio en tant que',
-        defaultPath: `audio.mp3`, // Suggest a generic name, yt-dlp might override with title anyway if -o is just a path
+        defaultPath: `audio.mp3`,
         filters: [
           { name: 'Fichiers audio', extensions: ['mp3', 'm4a', 'wav'] }
         ]
@@ -189,46 +188,66 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       console.log(`Tentative de téléchargement de l'audio pour: ${url} vers ${outputFilePath}`);
     }
     
-    // --- IMPORTANT --- 
-    // Use ffmpeg-static to get the path to ffmpeg
-    // const ffmpegPath = ffmpeg; // This was the previous way
-    // We now use the globally resolved `ffmpegPathToUse`
-
     const execArgs = [
       url,
-      '-f', 'bestaudio/best', // Select best audio quality
-      '-x', // Extract audio
+      '-f', 'bestaudio/best',
+      '-x',
       '--audio-format', 'mp3',
-      '--audio-quality', '0', // Best quality for MP3 conversion
-      '-o', outputFilePath, // Use the determined output path/template
-      '--progress' // Enable progress reporting
+      '--audio-quality', '0',
+      '-o', outputFilePath,
+      '--progress'
     ];
 
-    if (ffmpegPathToUse) { // Check if the resolved ffmpegPathToUse is available
+    if (ffmpegPathToUse) {
       execArgs.push('--ffmpeg-location', ffmpegPathToUse);
     }
 
-    // Configure yt-dlp to download audio only, in mp3 format
     await ytDlpWrap.exec(execArgs)
     .on('progress', (progress) => {
-        // Example progress object: { percent: '2.6%', totalSize: '2.36MiB', currentSpeed: '74.09KiB/s', eta: '00:30' }
-      // Send the raw progress object to the renderer
+      console.log('[Main Process] RAW yt-dlp progress event:', JSON.stringify(progress));
       event.reply('download-progress', progress);
+
+      if (!conversionSignalSent && progress && typeof progress.percent === 'string') {
+        const currentPercent = parseFloat(progress.percent.replace('%',''));
+        if (currentPercent >= 99.5) { // Using 99.5 as a threshold for "download part done"
+          console.log('[Main Process] Download reported as essentially complete (>=99.5%).');
+          downloadReportedAsMostlyComplete = true; 
+          // This is now the PRIMARY and EARLIEST point to send conversion-phase-started
+          console.log('[Main Process] conversion-phase-started sent (triggered by download >=99.5% completion).');
+          event.reply('conversion-phase-started');
+          conversionSignalSent = true;
+        }
+      }
     })
-    .on('ytDlpEvent', (eventType, eventData) => console.log(eventType, eventData)) // For debugging yt-dlp output
+    .on('ytDlpEvent', (eventType, eventData) => {
+      // Log ytDlpEvents for diagnostics, but DO NOT send conversion-phase-started from here anymore
+      // to simplify and avoid race conditions with the progress handler.
+      console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
+      // We could potentially set downloadReportedAsMostlyComplete = true here if a very specific 
+      // "download definitely finished, starting ffmpeg" event is found, but the progress >= 99.5% is more reliable.
+    })
     .on('error', (error) => {
       console.error('Error during download:', error);
       event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
     })
     .on('close', () => {
-      // yt-dlp doesn't directly tell us the final filename when using a template.
-      // We could try to find the latest .mp3 in the folder, but that's brittle.
-      // For now, just confirm completion to the directory.
-      const finalMessage = downloadPath 
-        ? `Téléchargement terminé. Audio enregistré dans ${downloadPath}. (Le nom du fichier est basé sur le titre de la vidéo)`
-        : `Téléchargement terminé: ${outputFilePath}`;
-      console.log(`Téléchargement terminé pour ${url}`);
-      event.reply('download-complete', finalMessage);
+      console.log('[Main Process] yt-dlp process close event fired.');
+      // Fallback: If signal somehow wasn't sent, send it now.
+      if (!conversionSignalSent) {
+        console.warn('[Main Process] \'close\' event: conversion-phase-started was missed. Sending now.');
+        event.reply('conversion-phase-started');
+        // conversionSignalSent = true; // Not strictly needed here as it's the end, but good practice
+      }
+      
+      // IMPORTANT: Delay sending 'download-complete' to allow the renderer's 
+      // conversion simulation (e.g., 3 seconds) to visually complete.
+      setTimeout(() => {
+        const finalMessage = downloadPath 
+            ? `Téléchargement terminé. Audio enregistré dans ${downloadPath}. (Le nom du fichier est basé sur le titre de la vidéo)`
+            : `Téléchargement terminé: ${outputFilePath}`;
+        console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+        event.reply('download-complete', finalMessage);
+      }, 3500); // Give renderer ~3.5s (simulation is 3s)
     });
 
   } catch (error) {

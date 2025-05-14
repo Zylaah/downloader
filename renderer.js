@@ -29,6 +29,8 @@ const closeBtn = document.getElementById('closeBtn');
 let currentDownloadPath = '';
 let messageTimeout = null; // To store the timeout ID for the message area
 let selectedVideoUrl = ''; // Store the selected video URL
+const DOWNLOAD_PROGRESS_SCALE = 0.85; // Download part takes up 85% of the bar
+let conversionSimulationActive = false;
 
 // Window controls event listeners
 if (minimizeBtn) {
@@ -120,7 +122,6 @@ function updateProgressBar(percentInput) {
     percentNumber = Math.max(0, Math.min(100, percentNumber)); // Clamp between 0 and 100
 
     progressBarFill.style.width = `${percentNumber}%`;
-    progressBarText.textContent = `${Math.round(percentNumber)}%`;
 }
 
 async function initializePath() {
@@ -139,6 +140,7 @@ async function initializePath() {
 
 function resetListeners() {
     window.electronAPI.removeAllListeners('download-progress');
+    window.electronAPI.removeAllListeners('conversion-phase-started');
     window.electronAPI.removeAllListeners('download-complete');
     window.electronAPI.removeAllListeners('download-error');
     window.electronAPI.removeAllListeners('download-cancelled');
@@ -178,6 +180,10 @@ function resetUI() {
         window.conversionSimulationInterval = null;
     }
     
+    // Reset progress bar text
+    progressBarText.textContent = '0%';
+    conversionSimulationActive = false; // Reset simulation flag
+    
     // Focus on search field
     searchQuery.focus();
 }
@@ -204,88 +210,111 @@ downloadButton.addEventListener('click', () => {
     
     if (!currentDownloadPath) {
         displayUserMessage('Veuillez définir un emplacement de téléchargement', 'error');
-        // Show the settings popup if no download path is set
         settingsPopup.style.display = 'flex';
         return;
     }
 
     resetListeners();
+    conversionSimulationActive = false; // Reset before new download
     
-    // Hide the search results and download button
     searchResults.style.display = 'none';
     downloadButton.style.display = 'none';
-    
-    // Hide the back button
     backButton.style.display = 'none';
-    
-    // Show progress
     progressContainer.style.display = 'block';
-    updateProgressBar(0);
-    
-    // Clear any existing message
+    updateProgressBar(0); 
+    progressBarText.textContent = 'Préparation...'; 
     displayUserMessage('', null);
 
     window.electronAPI.downloadAudio(selectedVideoUrl, currentDownloadPath);
 
     window.electronAPI.onDownloadProgress((progressData) => {
-        let percentValueForBar = 0;
+        console.log('[Renderer] Received download-progress event with data:', JSON.stringify(progressData)); 
+        if (conversionSimulationActive) {
+            console.log('[Renderer] Conversion simulation active, ignoring download-progress event.');
+            return; 
+        }
+
+        let actualDownloadPercent = 0;
+        let isPreparing = false;
 
         if (typeof progressData === 'string') {
-            const percentMatch = progressData.match(/(\d+\.?\d*)\s*%/);
-            if (percentMatch && percentMatch[1]) {
-                percentValueForBar = parseFloat(percentMatch[1]);
+            // This will likely be the initial "Preparing to download..." message
+            if (progressData.toLowerCase().includes('preparing') || progressData.toLowerCase().includes('début')) {
+                isPreparing = true;
+            } else {
+                // Attempt to parse if it's an unexpected string format with a percentage
+                const percentMatch = progressData.match(/(\d+\.?\d*)\s*%/);
+                if (percentMatch && percentMatch[1]) {
+                    actualDownloadPercent = parseFloat(percentMatch[1]);
+                }
             }
         } else if (progressData && typeof progressData === 'object' && progressData.percent != null) {
             if (typeof progressData.percent === 'string') {
-                percentValueForBar = parseFloat(progressData.percent.replace('%',''));
+                actualDownloadPercent = parseFloat(progressData.percent.replace('%',''));
             } else if (typeof progressData.percent === 'number') {
-                 percentValueForBar = progressData.percent;
+                 actualDownloadPercent = progressData.percent;
             }
         }
         
-        // Scale download progress to only use 70% of the progress bar
-        // This reserves 30% for the conversion phase
-        percentValueForBar = (percentValueForBar * 0.7);
-        
-        updateProgressBar(percentValueForBar);
+        // Ensure actualDownloadPercent is a number for calculations
+        if (isNaN(actualDownloadPercent)) actualDownloadPercent = 0;
+
+        const overallProgressPercent = actualDownloadPercent * DOWNLOAD_PROGRESS_SCALE;
+        updateProgressBar(overallProgressPercent);
+
+        if (isPreparing) {
+            progressBarText.textContent = 'Préparation...';
+        } else if (actualDownloadPercent >= 99.5) {
+            // Once download is effectively 100%, show a finalization message 
+            // before conversion-phase-started event updates it to "Conversion..."
+            progressBarText.textContent = 'Finalisation du téléchargement...';
+        } else {
+            progressBarText.textContent = `Téléchargement: ${Math.round(actualDownloadPercent)}%`;
+        }
+    });
+
+    window.electronAPI.onConversionPhaseStarted(() => {
+        if (conversionSimulationActive) return; 
+        conversionSimulationActive = true;
+        console.log("Conversion phase started signal received by renderer.");
+        // Text is now explicitly "Conversion en cours..."
+        progressBarText.textContent = 'Conversion en cours...';
+        // Ensure bar is at least at the starting point of conversion visually
+        updateProgressBar(DOWNLOAD_PROGRESS_SCALE * 100);
+        simulateConversionProgress(DOWNLOAD_PROGRESS_SCALE * 100, 100, 3000); 
     });
 
     window.electronAPI.onDownloadComplete((message) => {
-        // Simulate conversion progress from 70% to 100%
-        simulateConversionProgress(message);
-        
-        // Hide selected video container
+        if (window.conversionSimulationInterval) {
+            clearInterval(window.conversionSimulationInterval);
+            window.conversionSimulationInterval = null;
+        }
+        progressContainer.style.display = 'none'; // Hide the progress bar container
+
         selectedVideoContainer.style.display = 'none';
-        
-        // Reset listeners
+        completionNotification.style.display = 'block';
+        displayUserMessage('Téléchargement terminé avec succès !', 'complete');
         resetListeners();
     });
 
     window.electronAPI.onDownloadError((errorMessage) => {
         displayUserMessage(errorMessage, 'error');
-        
-        // Hide progress and show download button again
         progressContainer.style.display = 'none';
         downloadButton.style.display = 'inline-block';
-        
-        // Make sure any running simulation is cleared
+        conversionSimulationActive = false;
         if (window.conversionSimulationInterval) {
             clearInterval(window.conversionSimulationInterval);
         }
-        
         resetListeners();
     });
 
     window.electronAPI.onDownloadCancelled(() => {
-        // Reset UI
         progressContainer.style.display = 'none';
         downloadButton.style.display = 'inline-block';
-        
-        // Make sure any running simulation is cleared
+        conversionSimulationActive = false;
         if (window.conversionSimulationInterval) {
             clearInterval(window.conversionSimulationInterval);
         }
-        
         resetListeners();
     });
 });
@@ -402,40 +431,30 @@ backButton.addEventListener('click', () => {
     selectedVideoUrl = '';
 });
 
-// Add a function to simulate conversion progress
-function simulateConversionProgress(completionMessage) {
-    const startPercent = 70;
-    const endPercent = 100;
-    const duration = 3000; // 3 seconds for conversion simulation
-    const steps = 30; // Number of steps
-    const increment = (endPercent - startPercent) / steps;
+// Modified simulateConversionProgress to accept start/end points
+function simulateConversionProgress(startPercentOverall, endPercentOverall, duration) {
+    const steps = 30; 
+    const increment = (endPercentOverall - startPercentOverall) / steps;
     const interval = duration / steps;
     
-    let currentPercent = startPercent;
+    let currentOverallPercent = startPercentOverall;
     let step = 0;
     
-    // Immediately show 70%
-    updateProgressBar(currentPercent);
-    
-    // Clear any existing simulation
     if (window.conversionSimulationInterval) {
         clearInterval(window.conversionSimulationInterval);
     }
     
     window.conversionSimulationInterval = setInterval(() => {
         step++;
-        currentPercent = startPercent + (step * increment);
+        currentOverallPercent = startPercentOverall + (step * increment);
+        currentOverallPercent = Math.min(currentOverallPercent, endPercentOverall); 
         
-        updateProgressBar(currentPercent);
+        updateProgressBar(currentOverallPercent);
+        // progressBarText is NOT set here, allowing "Conversion en cours..." to persist
         
-        if (step >= steps) {
+        if (step >= steps || currentOverallPercent >= endPercentOverall) {
             clearInterval(window.conversionSimulationInterval);
             window.conversionSimulationInterval = null;
-            progressContainer.style.display = 'none';
-            
-            // Only now show completion notification and message
-            completionNotification.style.display = 'block';
-            displayUserMessage('Téléchargement terminé avec succès !', 'complete');
         }
     }, interval);
 }

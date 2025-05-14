@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   downloadAudio: (url, downloadPath) => ipcRenderer.send('download-audio', url, downloadPath),
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_event, value) => callback(value)),
+  onConversionPhaseStarted: (callback) => ipcRenderer.on('conversion-phase-started', (_event) => callback()),
   onDownloadComplete: (callback) => ipcRenderer.on('download-complete', (_event, value) => callback(value)),
   onDownloadError: (callback) => ipcRenderer.on('download-error', (_event, value) => callback(value)),
   onDownloadCancelled: (callback) => ipcRenderer.on('download-cancelled', (_event, value) => callback(value)),
