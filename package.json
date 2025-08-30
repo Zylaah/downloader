@@ -1,7 +1,7 @@
 {
-  "name": "audio-tube",
+  "name": "my-tube",
   "version": "1.0.0",
-  "description": "A simple YouTube audio downloader.",
+  "description": "A simple YouTube video and audio downloader.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -12,6 +12,7 @@
     "youtube",
     "downloader",
     "audio",
+    "video",
     "electron"
   ],
   "author": "Bxthesda",
@@ -26,8 +27,8 @@
     "yt-dlp-wrap": "^2.3.12"
   },
   "build": {
-    "appId": "com.example.ytaudiodownloader",
-    "productName": "AudioTube",
+    "appId": "com.example.ytdownloader",
+    "productName": "MyTube",
     "directories": {
       "output": "dist"
     },

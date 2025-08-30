@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectDownloadPath: () => ipcRenderer.invoke('select-download-path'),
   getDefaultDownloadPath: () => ipcRenderer.invoke('get-default-download-path'),
   searchYoutube: (query, maxResults) => ipcRenderer.invoke('search-youtube', query, maxResults),
+  getVideoInfo: (url) => ipcRenderer.invoke('get-video-info', url),
+  cancelVideoInfo: () => ipcRenderer.invoke('cancel-video-info'),
   minimizeWindow: () => ipcRenderer.send('minimize-window'),
   maximizeRestoreWindow: () => ipcRenderer.send('maximize-restore-window'),
   closeWindow: () => ipcRenderer.send('close-window'),

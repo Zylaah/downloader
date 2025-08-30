@@ -32,6 +32,7 @@ let messageTimeout = null; // To store the timeout ID for the message area
 let selectedVideoUrl = ''; // Store the selected video URL
 const DOWNLOAD_PROGRESS_SCALE = 0.85; // Download part takes up 85% of the bar
 let conversionSimulationActive = false;
+let videoInfoController = null; // To control video info fetching
 
 // Window controls event listeners
 if (minimizeBtn) {
@@ -148,6 +149,12 @@ function resetListeners() {
 }
 
 function resetUI() {
+    // Cancel any ongoing video info request
+    if (videoInfoController) {
+        window.electronAPI.cancelVideoInfo();
+        videoInfoController = null;
+    }
+    
     // Hide the completion notification
     completionNotification.style.display = 'none';
     
@@ -157,6 +164,9 @@ function resetUI() {
     
     // Show search input again
     document.querySelector('.search-container').style.display = 'flex';
+    
+    // Show format selection container
+    document.querySelector('.format-selection').style.display = 'block';
     
     // Reset selected video display
     selectedVideoContainer.style.display = 'none';
@@ -168,9 +178,9 @@ function resetUI() {
     // Reset selected video URL
     selectedVideoUrl = '';
     
-    // Show download button
+    // Hide download button (should only appear after video info is retrieved)
     downloadButton.disabled = false;
-    downloadButton.style.display = 'inline-block';
+    downloadButton.style.display = 'none';
     
     // Hide progress
     progressContainer.style.display = 'none';
@@ -343,14 +353,84 @@ formatSelect.addEventListener('change', () => {
 });
 
 // Function to search for YouTube videos
+// Function to check if a string is a YouTube URL
+function isYouTubeUrl(str) {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)[a-zA-Z0-9_-]{11}/;
+    return youtubeRegex.test(str);
+}
+
 async function performSearch() {
     const query = searchQuery.value.trim();
     if (!query) {
-        displayUserMessage('Veuillez entrer une requête de recherche', 'error');
+        displayUserMessage('Veuillez entrer une requête de recherche ou un lien YouTube', 'error');
         return;
     }
 
-    // Show loading state
+    // Check if the input is a YouTube URL
+    if (isYouTubeUrl(query)) {
+        // Handle direct URL input
+        selectedVideoUrl = query;
+        
+        // Show loading state while fetching video info
+        selectedVideoTitle.textContent = 'Récupération des informations de la vidéo...';
+        selectedVideoContainer.style.display = 'block';
+        
+        // Clear and hide search results and search container
+        searchResults.innerHTML = '';
+        searchResults.style.display = 'none';
+        document.querySelector('.search-container').style.display = 'none';
+        
+        // Hide format selection container
+        document.querySelector('.format-selection').style.display = 'none';
+        
+        // Show back button
+        backButton.style.display = 'flex';
+        
+        try {
+            // Mark that we have an active video info request
+            videoInfoController = true;
+            
+            // Fetch video info to get the title
+            const videoInfo = await window.electronAPI.getVideoInfo(query);
+            
+            // Check if request was cancelled
+            if (!videoInfoController) {
+                return;
+            }
+            
+            if (videoInfo && videoInfo.cancelled) {
+                return;
+            }
+            
+            if (videoInfo && videoInfo.title) {
+                selectedVideoTitle.textContent = `Vidéo sélectionnée depuis le lien : ${videoInfo.title}`;
+            } else {
+                selectedVideoTitle.textContent = 'Vidéo sélectionnée depuis le lien';
+            }
+            
+            // Show download button only after successful video info retrieval
+            downloadButton.style.display = 'inline-block';
+            downloadButton.focus();
+        } catch (error) {
+            // Check if request was cancelled
+            if (!videoInfoController) {
+                return;
+            }
+            console.error('Error fetching video info:', error);
+            selectedVideoTitle.textContent = 'Vidéo sélectionnée depuis le lien';
+            
+            // Show download button even if title fetch failed
+            downloadButton.style.display = 'inline-block';
+        } finally {
+            // Clear the controller
+            videoInfoController = null;
+        }
+        
+        displayUserMessage('Lien YouTube détecté et sélectionné', 'success');
+        return;
+    }
+
+    // Show loading state for search
     searchButton.disabled = true;
     searchButton.textContent = 'Recherche...';
     searchResults.innerHTML = '<div class="search-result-item">Recherche en cours...</div>';
@@ -412,10 +492,14 @@ function displaySearchResults(results) {
             // Hide search input section
             document.querySelector('.search-container').style.display = 'none';
             
+            // Hide format selection container
+            document.querySelector('.format-selection').style.display = 'none';
+            
             // Show back button
             backButton.style.display = 'flex';
             
-            // Focus download button
+            // Show download button when video is selected
+            downloadButton.style.display = 'inline-block';
             downloadButton.focus();
         });
         
@@ -427,17 +511,33 @@ function displaySearchResults(results) {
 
 // Back button functionality
 backButton.addEventListener('click', () => {
+    // Cancel any ongoing video info request
+    if (videoInfoController) {
+        window.electronAPI.cancelVideoInfo();
+        videoInfoController = null;
+    }
+    
     // Show search container again
     document.querySelector('.search-container').style.display = 'flex';
     
-    // Show search results
-    searchResults.style.display = 'block';
+    // Only show search results if there are results to display
+    if (searchResults.innerHTML.trim() !== '') {
+        searchResults.style.display = 'block';
+    } else {
+        searchResults.style.display = 'none';
+    }
+    
+    // Show format selection container
+    document.querySelector('.format-selection').style.display = 'block';
     
     // Hide selected video container
     selectedVideoContainer.style.display = 'none';
     
     // Hide back button
     backButton.style.display = 'none';
+    
+    // Hide download button when returning to initial state
+    downloadButton.style.display = 'none';
     
     // Clear the selection
     selectedVideoUrl = '';

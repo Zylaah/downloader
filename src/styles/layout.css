@@ -10,6 +10,7 @@
 .app-container {
     background-color: white;
     border-radius: var(--radius);
+    border: 1px solid var(--primary);
     box-shadow: var(--shadow);
     width: 100%;
     max-width: 550px;

@@ -256,6 +256,96 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
   }
 });
 
+// Store active video info processes to allow cancellation
+const activeVideoInfoProcesses = new Map();
+
+ipcMain.handle('get-video-info', async (event, url) => {
+  try {
+    if (!url || !url.trim()) {
+      return { error: 'Please provide a valid URL.' };
+    }
+
+    console.log(`Getting video info for: ${url}`);
+    
+    return new Promise((resolve) => {
+      const processId = Date.now() + Math.random(); // Unique ID for this process
+      let isResolved = false;
+      
+      // Use execPromise for reliable output capture
+      const promise = ytDlpWrap.execPromise([
+        url.trim(),
+        '--print', '%(title)s',
+        '--no-download',
+        '--encoding', 'utf-8'
+      ])
+      .then(output => {
+        if (!isResolved) {
+          isResolved = true;
+          activeVideoInfoProcesses.delete(processId);
+          const title = output.trim();
+          console.log('Video title retrieved:', title);
+          resolve({ title: title });
+        }
+      })
+      .catch(error => {
+        if (!isResolved) {
+          isResolved = true;
+          activeVideoInfoProcesses.delete(processId);
+          console.error('[Main Process] Error getting video info:', error);
+          resolve({ 
+            error: `Failed to get video info: ${error.message || 'Unknown error'}`,
+            stack: error.stack
+          });
+        }
+      });
+      
+      // Store the promise and resolve function for cancellation
+      activeVideoInfoProcesses.set(processId, {
+        promise: promise,
+        resolve: () => {
+          if (!isResolved) {
+            isResolved = true;
+            activeVideoInfoProcesses.delete(processId);
+            resolve({ cancelled: true });
+          }
+        }
+      });
+      
+      // Store process ID in event sender for potential cancellation
+      event.sender.videoInfoProcessId = processId;
+    });
+  } catch (error) {
+    console.error('[Main Process] Synchronous error in get-video-info handler:', error);
+    return { 
+      error: `Synchronous handler error: ${error.message || 'Unknown error'}`,
+      stack: error.stack
+    };
+  }
+});
+
+// Handle cancellation of video info requests
+ipcMain.handle('cancel-video-info', async (event) => {
+  try {
+    const processId = event.sender.videoInfoProcessId;
+    if (processId && activeVideoInfoProcesses.has(processId)) {
+      const processInfo = activeVideoInfoProcesses.get(processId);
+      
+      // Resolve the promise with cancelled status
+      if (processInfo.resolve) {
+        processInfo.resolve();
+      }
+      
+      console.log('Video info process cancelled');
+      return { success: true };
+    }
+    
+    return { success: false, message: 'No active process to cancel' };
+  } catch (error) {
+    console.error('[Main Process] Error cancelling video info:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.on('download-media', async (event, url, downloadPath, format) => {
   if (!url || !url.trim()) {
     event.reply('download-error', 'Please enter a valid URL.');
@@ -307,7 +397,8 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
     } else {
       execArgs = [
         url,
-        '-f', 'best[height<=1080]',
+        '-f', 'bestvideo[fps<=60]+bestaudio/bestvideo+bestaudio/best',
+        '--merge-output-format', 'mp4',
         '-o', outputFilePath,
         '--progress'
       ];

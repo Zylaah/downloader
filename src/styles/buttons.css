@@ -68,7 +68,7 @@
     font-weight: 500;
     cursor: pointer;
     transition: var(--transition);
-    display: inline-block;
+    display: none; /* Initially hidden, shown only after video info is retrieved */
     min-width: 200px;
 }
 
