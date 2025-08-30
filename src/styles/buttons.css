@@ -21,6 +21,43 @@
     text-align: center;
 }
 
+/* Format selection */
+.format-selection {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.format-selection label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-dark);
+}
+
+#formatSelect {
+    background-color: white;
+    color: var(--gray-dark);
+    border: 1px solid var(--gray-light);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 120px;
+}
+
+#formatSelect:hover {
+    border-color: var(--primary);
+}
+
+#formatSelect:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
 #downloadButton {
     background-color: var(--primary);
     color: white;
@@ -62,4 +99,4 @@
 .download-more-btn:hover {
     background-color: #388e3c;
     transform: translateY(-2px);
-} 
+}

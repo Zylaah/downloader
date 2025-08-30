@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   downloadAudio: (url, downloadPath) => ipcRenderer.send('download-audio', url, downloadPath),
+  downloadMedia: (url, downloadPath, format) => ipcRenderer.send('download-media', url, downloadPath, format),
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_event, value) => callback(value)),
   onConversionPhaseStarted: (callback) => ipcRenderer.on('conversion-phase-started', (_event) => callback()),
   onDownloadComplete: (callback) => ipcRenderer.on('download-complete', (_event, value) => callback(value)),
@@ -16,4 +17,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => ipcRenderer.send('close-window'),
   onWindowMaximized: (callback) => ipcRenderer.on('window-maximized', callback),
   onWindowUnmaximized: (callback) => ipcRenderer.on('window-unmaximized', callback)
-}); 
+});

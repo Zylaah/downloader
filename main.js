@@ -256,7 +256,112 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
   }
 });
 
-// Add a search handler for YouTube videos
+ipcMain.on('download-media', async (event, url, downloadPath, format) => {
+  if (!url || !url.trim()) {
+    event.reply('download-error', 'Please enter a valid URL.');
+    return;
+  }
+
+  let outputFilePath;
+  let conversionSignalSent = false;
+  let downloadReportedAsMostlyComplete = false;
+
+  try {
+    if (downloadPath && fs.existsSync(downloadPath)) {
+      outputFilePath = path.join(downloadPath, '%(title)s.%(ext)s');
+      event.reply('download-progress', `Preparing to download to: ${downloadPath}`);
+      console.log(`Attempting to download ${format} for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
+    } else {
+      const fileExtension = format === 'audio' ? 'mp3' : 'mp4';
+      const fileType = format === 'audio' ? 'audio' : 'vidéo';
+      const { filePath, canceled } = await dialog.showSaveDialog({
+        title: `Enregistrer la ${fileType} en tant que`,
+        defaultPath: `${fileType}.${fileExtension}`,
+        filters: [
+          format === 'audio' 
+            ? { name: 'Fichiers audio', extensions: ['mp3', 'm4a', 'wav'] }
+            : { name: 'Fichiers vidéo', extensions: ['mp4', 'mkv', 'avi'] }
+        ]
+      });
+
+      if (canceled || !filePath) {
+        event.reply('download-cancelled', 'Téléchargement annulé par l\'utilisateur.');
+        return;
+      }
+      outputFilePath = filePath;
+      event.reply('download-progress', 'Début du téléchargement...');
+      console.log(`Tentative de téléchargement de ${format} pour: ${url} vers ${outputFilePath}`);
+    }
+    
+    let execArgs;
+    if (format === 'audio') {
+      execArgs = [
+        url,
+        '-f', 'bestaudio/best',
+        '-x',
+        '--audio-format', 'mp3',
+        '--audio-quality', '0',
+        '-o', outputFilePath,
+        '--progress'
+      ];
+    } else {
+      execArgs = [
+        url,
+        '-f', 'best[height<=1080]',
+        '-o', outputFilePath,
+        '--progress'
+      ];
+    }
+
+    if (ffmpegPathToUse) {
+      execArgs.push('--ffmpeg-location', ffmpegPathToUse);
+    }
+
+    await ytDlpWrap.exec(execArgs)
+    .on('progress', (progress) => {
+      console.log('[Main Process] RAW yt-dlp progress event:', JSON.stringify(progress));
+      event.reply('download-progress', progress);
+
+      if (!conversionSignalSent && progress && typeof progress.percent === 'string') {
+        const currentPercent = parseFloat(progress.percent.replace('%',''));
+        if (currentPercent >= 99.5) {
+          console.log('[Main Process] Download reported as essentially complete (>=99.5%)');
+          downloadReportedAsMostlyComplete = true; 
+          console.log('[Main Process] conversion-phase-started sent (triggered by download >=99.5% completion).');
+          event.reply('conversion-phase-started');
+          conversionSignalSent = true;
+        }
+      }
+    })
+    .on('ytDlpEvent', (eventType, eventData) => {
+      console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
+    })
+    .on('error', (error) => {
+      console.error('Error during download:', error);
+      event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
+    })
+    .on('close', () => {
+      console.log('[Main Process] yt-dlp process close event fired.');
+      if (!conversionSignalSent) {
+        console.warn('[Main Process] \'close\' event: conversion-phase-started was missed. Sending now.');
+        event.reply('conversion-phase-started');
+      }
+      
+      setTimeout(() => {
+        const finalMessage = downloadPath 
+            ? `Téléchargement terminé. ${format === 'audio' ? 'Audio' : 'Vidéo'} enregistré dans ${downloadPath}. (Le nom du fichier est basé sur le titre de la vidéo)`
+            : `Téléchargement terminé: ${outputFilePath}`;
+        console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+        event.reply('download-complete', finalMessage);
+      }, 3500);
+    });
+
+  } catch (error) {
+    console.error('yt-dlp execution error:', error);
+    event.reply('download-error', `Failed to download ${format}: ${error.message || 'Unknown error'}`);
+  }
+});
+
 ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
   try {
     if (!query || !query.trim()) {

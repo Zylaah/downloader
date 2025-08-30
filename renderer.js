@@ -18,6 +18,7 @@ const saveSettingsButton = document.getElementById('saveSettingsButton');
 const selectedVideoContainer = document.getElementById('selectedVideoContainer');
 const selectedVideoTitle = document.getElementById('selectedVideoTitle');
 const backButton = document.getElementById('backButton');
+const formatSelect = document.getElementById('formatSelect');
 
 // Title bar controls
 const minimizeBtn = document.getElementById('minimizeBtn');
@@ -225,7 +226,8 @@ downloadButton.addEventListener('click', () => {
     progressBarText.textContent = 'Préparation...'; 
     displayUserMessage('', null);
 
-    window.electronAPI.downloadAudio(selectedVideoUrl, currentDownloadPath);
+    const selectedFormat = formatSelect.value;
+    window.electronAPI.downloadMedia(selectedVideoUrl, currentDownloadPath, selectedFormat);
 
     window.electronAPI.onDownloadProgress((progressData) => {
         console.log('[Renderer] Received download-progress event with data:', JSON.stringify(progressData)); 
@@ -327,6 +329,16 @@ searchButton.addEventListener('click', performSearch);
 searchQuery.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         performSearch();
+    }
+});
+
+// Format selection change handler
+formatSelect.addEventListener('change', () => {
+    const selectedFormat = formatSelect.value;
+    if (selectedFormat === 'audio') {
+        downloadButton.textContent = "Télécharger l'audio";
+    } else if (selectedFormat === 'video') {
+        downloadButton.textContent = "Télécharger la vidéo";
     }
 });
 
@@ -460,4 +472,4 @@ function simulateConversionProgress(startPercentOverall, endPercentOverall, dura
 }
 
 // Initialize the default path when the script loads
-initializePath(); 
+initializePath();
