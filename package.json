@@ -1,11 +1,14 @@
 {
   "name": "my-tube",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A simple YouTube video and audio downloader.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder --win --linux",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -44,8 +47,9 @@
       "icon": "build/icon.icns"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "build/icon.png"
+      "target": "tar.gz",
+      "icon": "build/icon.png",
+      "category": "AudioVideo"
     },
     "asarUnpack": [
       "**/node_modules/ffmpeg-static/bin/**",
