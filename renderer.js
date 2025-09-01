@@ -403,7 +403,7 @@ async function performSearch() {
             }
             
             if (videoInfo && videoInfo.title) {
-                selectedVideoTitle.textContent = `Vidéo sélectionnée depuis le lien : ${videoInfo.title}`;
+                selectedVideoTitle.textContent = `${videoInfo.title}`;
             } else {
                 selectedVideoTitle.textContent = 'Vidéo sélectionnée depuis le lien';
             }
