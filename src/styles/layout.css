@@ -5,13 +5,16 @@
     justify-content: center;
     padding-top: 38px;
     width: 100%;
+    background-color: transparent;
+    background-image: radial-gradient(#d9230f 1px, var(--light) 1px);
+    background-size: 30px 30px;
 }
 
 .app-container {
     background-color: white;
     border-radius: var(--radius);
     border: 1px solid var(--primary);
-    box-shadow: var(--shadow);
+    box-shadow: rgba(211, 0, 0, 0.2) 0px 4px 12px;
     width: 100%;
     max-width: 550px;
     padding: 40px;

@@ -6,7 +6,7 @@
     --gray: #666666;
     --gray-light: #dddddd;
     --light: #f8f9fa;
-    --shadow: 0 0 25px rgba(207, 0, 0, 0.3);
+    --shadow: 0 0 25px rgba(0, 0, 0, 0.3);
     --radius: 8px;
     --transition: all 0.3s ease;
 }
