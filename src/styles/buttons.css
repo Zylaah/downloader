@@ -58,6 +58,27 @@
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 
+.paste-clipboard-btn {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.paste-clipboard-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+.paste-clipboard-btn:active {
+    transform: translateY(1px);
+}
+
 #downloadButton {
     background-color: var(--primary);
     color: white;

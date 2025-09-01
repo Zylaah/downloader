@@ -19,6 +19,7 @@ const selectedVideoContainer = document.getElementById('selectedVideoContainer')
 const selectedVideoTitle = document.getElementById('selectedVideoTitle');
 const backButton = document.getElementById('backButton');
 const formatSelect = document.getElementById('formatSelect');
+const pasteClipboardButton = document.getElementById('pasteClipboardButton');
 
 // Title bar controls
 const minimizeBtn = document.getElementById('minimizeBtn');
@@ -349,6 +350,20 @@ formatSelect.addEventListener('change', () => {
         downloadButton.textContent = "Télécharger l'audio";
     } else if (selectedFormat === 'video') {
         downloadButton.textContent = "Télécharger la vidéo";
+    }
+});
+
+// Paste clipboard button handler
+pasteClipboardButton.addEventListener('click', async () => {
+    try {
+        const clipboardText = await navigator.clipboard.readText();
+        if (clipboardText.trim()) {
+            searchQuery.value = clipboardText.trim();
+            searchQuery.focus();
+        }
+    } catch (error) {
+        console.error('Failed to read clipboard:', error);
+        displayUserMessage('Impossible de lire le presse-papiers', 'error');
     }
 });
 
