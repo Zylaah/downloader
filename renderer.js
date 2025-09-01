@@ -14,7 +14,7 @@ const downloadMoreBtn = document.getElementById('downloadMoreBtn');
 const settingsButton = document.getElementById('settingsButton');
 const settingsPopup = document.getElementById('settingsPopup');
 const closeSettingsPopup = document.getElementById('closeSettingsPopup');
-const saveSettingsButton = document.getElementById('saveSettingsButton');
+
 const selectedVideoContainer = document.getElementById('selectedVideoContainer');
 const selectedVideoTitle = document.getElementById('selectedVideoTitle');
 const backButton = document.getElementById('backButton');
@@ -63,9 +63,7 @@ closeSettingsPopup.addEventListener('click', () => {
     settingsPopup.style.display = 'none';
 });
 
-saveSettingsButton.addEventListener('click', () => {
-    settingsPopup.style.display = 'none';
-});
+
 
 // Close popup when clicking outside
 settingsPopup.addEventListener('click', (e) => {
@@ -207,6 +205,8 @@ setPathButton.addEventListener('click', async () => {
             currentDownloadPath = selectedPath;
             downloadPathDisplay.textContent = selectedPath;
             downloadPathDisplay.title = selectedPath;
+            // Automatically close the popup after path selection
+            settingsPopup.style.display = 'none';
         }
     } catch (error) {
         console.error('Error selecting download path:', error);
