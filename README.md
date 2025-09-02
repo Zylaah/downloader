@@ -1,6 +1,6 @@
-# AudioTube Downloader
+# MyTube Downloader
 
-AudioTube Downloader is a desktop application built with Electron that allows users to easily search for YouTube videos and download their audio tracks in MP3 format. It provides a simple interface for searching, selecting a download location, and managing downloads.
+MyTube Downloader is a desktop application built with Electron that allows users to easily search for YouTube videos and download their audio tracks in MP3 format. It provides a simple interface for searching, selecting a download location, and managing downloads.
 
 ## Features
 
