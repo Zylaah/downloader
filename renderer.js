@@ -586,5 +586,39 @@ function simulateConversionProgress(startPercentOverall, endPercentOverall, dura
     }, interval);
 }
 
+// Check yt-dlp availability at startup
+async function checkYtDlpAvailability() {
+  try {
+    const result = await window.electronAPI.checkYtDlpAvailability();
+    if (!result.available) {
+      displayUserMessage(`Warning: ${result.error}. Downloads may not work properly.`, 'error');
+    } else {
+      console.log('yt-dlp binary available at:', result.path);
+    }
+  } catch (error) {
+    console.error('Error checking yt-dlp availability:', error);
+    displayUserMessage('Warning: Unable to verify yt-dlp availability. Downloads may not work properly.', 'error');
+  }
+}
+
+// Check ffmpeg availability at startup
+async function checkFfmpegAvailability() {
+  try {
+    const result = await window.electronAPI.checkFfmpegAvailability();
+    if (!result.available) {
+      displayUserMessage(`Warning: ${result.error}`, 'error');
+    } else {
+      console.log('ffmpeg binary available at:', result.path);
+    }
+  } catch (error) {
+    console.error('Error checking ffmpeg availability:', error);
+    displayUserMessage('Warning: Unable to verify ffmpeg availability. Audio conversion may not work properly.', 'error');
+  }
+}
+
 // Initialize the default path when the script loads
 initializePath();
+
+// Check yt-dlp and ffmpeg availability
+checkYtDlpAvailability();
+checkFfmpegAvailability();

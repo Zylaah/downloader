@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   searchYoutube: (query, maxResults) => ipcRenderer.invoke('search-youtube', query, maxResults),
   getVideoInfo: (url) => ipcRenderer.invoke('get-video-info', url),
   cancelVideoInfo: () => ipcRenderer.invoke('cancel-video-info'),
+  checkYtDlpAvailability: () => ipcRenderer.invoke('check-yt-dlp-availability'),
+  checkFfmpegAvailability: () => ipcRenderer.invoke('check-ffmpeg-availability'),
   minimizeWindow: () => ipcRenderer.send('minimize-window'),
   maximizeRestoreWindow: () => ipcRenderer.send('maximize-restore-window'),
   closeWindow: () => ipcRenderer.send('close-window'),

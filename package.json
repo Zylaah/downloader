@@ -22,11 +22,11 @@
   "license": "ISC",
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1" 
+    "electron-builder": "^24.9.1"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "electron-store": "^8.2.0",
-    "ffmpeg-static": "^5.2.0",
     "yt-dlp-wrap": "^2.3.12"
   },
   "build": {
@@ -56,8 +56,7 @@
       "category": "AudioVideo"
     },
     "asarUnpack": [
-      "**/node_modules/ffmpeg-static/bin/**",
-      "**/node_modules/yt-dlp-wrap/bin/**"
+      "**/node_modules/@ffmpeg-installer/**/ffmpeg*"
     ]
   }
 }

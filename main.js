@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store');
-const originalFfmpegPath = require('ffmpeg-static');
+const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
 const os = require('os'); // Added os module
 
 const store = new Store();
@@ -8,12 +8,51 @@ const path = require('path');
 const fs = require('fs');
 const YTDlpWrap = require('yt-dlp-wrap').default;
 
-// Determine the correct ffmpeg path to use
-let ffmpegPathToUse = originalFfmpegPath;
-if (app.isPackaged) {
-  ffmpegPathToUse = originalFfmpegPath.replace('app.asar', 'app.asar.unpacked');
+// Function to ensure ffmpeg binary is available
+function ensureFfmpegBinary() {
+  try {
+    // Use the @ffmpeg-installer/ffmpeg package which provides platform-specific binaries
+    let ffmpegPath = ffmpegInstaller.path;
+    
+    if (app.isPackaged) {
+      // Adjust path for packaged app
+      ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+    }
+    
+    // Check if the ffmpeg binary exists
+    if (ffmpegPath && fs.existsSync(ffmpegPath)) {
+      console.log('[Main Process] ffmpeg binary found at:', ffmpegPath);
+      console.log('[Main Process] ffmpeg version:', ffmpegInstaller.version);
+      return ffmpegPath;
+    }
+    
+    console.warn('[Main Process] ffmpeg binary not found at expected path:', ffmpegPath);
+  } catch (error) {
+    console.error('[Main Process] Error getting ffmpeg path:', error);
+  }
+  
+  // Fallback: try to use system ffmpeg
+  console.log('[Main Process] Trying system ffmpeg as fallback...');
+  
+  try {
+    const { execSync } = require('child_process');
+    const systemFfmpeg = execSync('which ffmpeg', { encoding: 'utf8' }).trim();
+    if (systemFfmpeg && fs.existsSync(systemFfmpeg)) {
+      console.log('[Main Process] Using system ffmpeg at:', systemFfmpeg);
+      return systemFfmpeg;
+    }
+  } catch (error) {
+    console.log('[Main Process] System ffmpeg not found in PATH');
+  }
+  
+  // If no ffmpeg is found, return null (yt-dlp will handle the error)
+  console.warn('[Main Process] No ffmpeg binary found. Audio conversion may not work properly.');
+  return null;
 }
-console.log('[Main Process] ffmpeg path determined as:', ffmpegPathToUse);
+
+// Determine the correct ffmpeg path to use
+let ffmpegPathToUse = ensureFfmpegBinary();
+console.log('[Main Process] ffmpeg path determined as:', ffmpegPathToUse || 'none (will rely on system PATH)');
 
 // Determine the yt-dlp executable name based on OS
 let ytDlpExecutableName;
@@ -22,14 +61,14 @@ switch (os.platform()) {
     ytDlpExecutableName = 'yt-dlp.exe';
     break;
   case 'darwin':
-    ytDlpExecutableName = 'yt-dlp_macos';
+    ytDlpExecutableName = 'yt-dlp';
     break;
   case 'linux':
-    ytDlpExecutableName = 'yt-dlp_linux';
+    ytDlpExecutableName = 'yt-dlp';
     break;
   default:
     console.error('[Main Process] Unsupported platform for yt-dlp:', os.platform());
-    // Potentially fallback or exit, for now, YTDlpWrap might try its default
+    ytDlpExecutableName = 'yt-dlp';
 }
 
 // Determine the path to the yt-dlp executable
@@ -61,9 +100,74 @@ if (app.isPackaged) {
   }
 }
 
+// Function to download yt-dlp binary if not found
+async function ensureYtDlpBinary() {
+  if (ytDlpBinaryPath && fs.existsSync(ytDlpBinaryPath)) {
+    console.log('[Main Process] yt-dlp binary found at:', ytDlpBinaryPath);
+    return ytDlpBinaryPath;
+  }
+
+  console.log('[Main Process] yt-dlp binary not found, attempting to download...');
+  
+  try {
+    // Create a temporary directory for the binary
+    const tempDir = path.join(os.tmpdir(), 'mytube-yt-dlp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    const binaryPath = path.join(tempDir, ytDlpExecutableName);
+    
+    // Download the latest yt-dlp binary
+    await YTDlpWrap.downloadFromGithub(binaryPath);
+    
+    // Make it executable on Unix systems
+    if (os.platform() !== 'win32') {
+      fs.chmodSync(binaryPath, '755');
+    }
+    
+    console.log('[Main Process] yt-dlp binary downloaded to:', binaryPath);
+    return binaryPath;
+  } catch (error) {
+    console.error('[Main Process] Failed to download yt-dlp binary:', error);
+    return null;
+  }
+}
+
 // Initialize yt-dlp-wrap with the determined path if available
 const ytDlpWrap = ytDlpBinaryPath ? new YTDlpWrap(ytDlpBinaryPath) : new YTDlpWrap();
 console.log('[Main Process] yt-dlp binary path used for YTDlpWrap init:', ytDlpBinaryPath || 'default (not found, relying on PATH)');
+
+// Add IPC handler to check yt-dlp availability
+ipcMain.handle('check-yt-dlp-availability', async () => {
+  try {
+    const binaryPath = await ensureYtDlpBinary();
+    if (binaryPath) {
+      ytDlpWrap.setBinaryPath(binaryPath);
+      return { available: true, path: binaryPath };
+    } else {
+      return { available: false, error: 'Unable to find or download yt-dlp binary' };
+    }
+  } catch (error) {
+    console.error('[Main Process] Error checking yt-dlp availability:', error);
+    return { available: false, error: error.message };
+  }
+});
+
+// Add IPC handler to check ffmpeg availability
+ipcMain.handle('check-ffmpeg-availability', () => {
+  try {
+    const binaryPath = ensureFfmpegBinary();
+    if (binaryPath) {
+      return { available: true, path: binaryPath };
+    } else {
+      return { available: false, error: 'No ffmpeg binary found. Audio conversion may not work properly.' };
+    }
+  } catch (error) {
+    console.error('[Main Process] Error checking ffmpeg availability:', error);
+    return { available: false, error: error.message };
+  }
+});
 
 // Handle getting the default download path
 ipcMain.handle('get-default-download-path', async () => {
@@ -198,8 +302,10 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       '--progress'
     ];
 
-    if (ffmpegPathToUse) {
-      execArgs.push('--ffmpeg-location', ffmpegPathToUse);
+    // Ensure we have the latest ffmpeg path
+    const currentFfmpegPath = ensureFfmpegBinary();
+    if (currentFfmpegPath) {
+      execArgs.push('--ffmpeg-location', currentFfmpegPath);
     }
 
     await ytDlpWrap.exec(execArgs)
@@ -264,6 +370,15 @@ ipcMain.handle('get-video-info', async (event, url) => {
     if (!url || !url.trim()) {
       return { error: 'Please provide a valid URL.' };
     }
+
+    // Ensure we have a valid yt-dlp binary before proceeding
+    const binaryPath = await ensureYtDlpBinary();
+    if (!binaryPath) {
+      return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
+    }
+
+    // Update ytDlpWrap to use the correct binary path
+    ytDlpWrap.setBinaryPath(binaryPath);
 
     console.log(`Getting video info for: ${url}`);
     
@@ -351,6 +466,16 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
     event.reply('download-error', 'Please enter a valid URL.');
     return;
   }
+
+  // Ensure we have a valid yt-dlp binary before proceeding
+  const binaryPath = await ensureYtDlpBinary();
+  if (!binaryPath) {
+    event.reply('download-error', 'Error: Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.');
+    return;
+  }
+
+  // Update ytDlpWrap to use the correct binary path
+  ytDlpWrap.setBinaryPath(binaryPath);
 
   let outputFilePath;
   let conversionSignalSent = false;
@@ -458,6 +583,15 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
     if (!query || !query.trim()) {
       return { error: 'Please enter a search query.' };
     }
+
+    // Ensure we have a valid yt-dlp binary before proceeding
+    const binaryPath = await ensureYtDlpBinary();
+    if (!binaryPath) {
+      return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
+    }
+
+    // Update ytDlpWrap to use the correct binary path
+    ytDlpWrap.setBinaryPath(binaryPath);
 
     console.log(`Searching YouTube for: ${query}`);
     
