@@ -53,10 +53,18 @@
       ],
       "maintainer": "Bxthesda <lucien.schaeffer@hotmail.com>",
       "icon": "build/icon.png",
-      "category": "AudioVideo"
+      "category": "AudioVideo",
+      "desktop": {
+        "Name": "MyTube",
+        "Comment": "A simple YouTube video and audio downloader",
+        "Keywords": "youtube;downloader;video;audio;",
+        "StartupWMClass": "MyTube"
+      },
+      "executableName": "MyTube"
     },
     "asarUnpack": [
-      "**/node_modules/@ffmpeg-installer/**/ffmpeg*"
+      "**/node_modules/@ffmpeg-installer/**/ffmpeg*",
+      "**/node_modules/@ffmpeg-installer/**/*"
     ]
   }
 }
