@@ -15,24 +15,8 @@ function ensureFfmpegBinary() {
     let ffmpegPath = ffmpegInstaller.path;
     
     if (app.isPackaged) {
-      // Adjust path for packaged app - different handling for different platforms
-      if (process.platform === 'win32') {
-        ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
-      } else if (process.platform === 'linux') {
-        // For Linux, the unpacked files are in a different location
-        const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', 'ffmpeg', 'ffmpeg');
-        if (fs.existsSync(unpackedPath)) {
-          ffmpegPath = unpackedPath;
-        } else {
-          // Try alternative Linux path
-          const altPath = path.join(__dirname, '..', 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', 'ffmpeg', 'ffmpeg');
-          if (fs.existsSync(altPath)) {
-            ffmpegPath = altPath;
-          }
-        }
-      } else if (process.platform === 'darwin') {
-        ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
-      }
+      // Adjust path for packaged app
+      ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
     }
     
     // Check if the ffmpeg binary exists
