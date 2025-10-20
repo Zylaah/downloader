@@ -48,7 +48,7 @@
     },
     "linux": {
       "target": [
-        "deb"
+        "flatpak"
       ],
       "maintainer": "Bxthesda <lucien.schaeffer@hotmail.com>",
       "icon": "build/icon.png",
@@ -65,6 +65,19 @@
     ],
     "extraResources": [
       { "from": "resources/bin", "to": "bin" }
-    ]
+    ],
+    "flatpak": {
+      "runtime": "org.freedesktop.Platform",
+      "runtimeVersion": "22.08",
+      "sdk": "org.freedesktop.Sdk",
+      "finishArgs": [
+        "--share=ipc",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--device=dri",
+        "--share=network",
+        "--talk-name=org.freedesktop.Notifications"
+      ]
+    }
   }
 }

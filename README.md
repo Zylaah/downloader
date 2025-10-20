@@ -13,7 +13,12 @@ MyTube Downloader is a desktop application built with Electron that allows users
 
 ## How to install ?
 
-Just download the lastest release and use the setup file to install it on your Windows computer !
+**Windows**: Download the latest release and use the setup file to install it on your Windows computer!
+
+**Linux**: Download the Flatpak package (.flatpak) and install it using:
+```bash
+flatpak install my-tube.flatpak
+```
 
 # If you want to build it yourself
 
