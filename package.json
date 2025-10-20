@@ -64,7 +64,8 @@
     },
     "asarUnpack": [
       "**/node_modules/@ffmpeg-installer/**/ffmpeg*",
-      "**/node_modules/@ffmpeg-installer/**/*"
+      "**/node_modules/@ffmpeg-installer/**/*",
+      "**/node_modules/yt-dlp-wrap/bin/**"
     ]
   }
 }
