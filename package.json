@@ -48,12 +48,17 @@
     },
     "linux": {
       "target": [
-        "AppImage",
         "deb"
       ],
       "maintainer": "Bxthesda <lucien.schaeffer@hotmail.com>",
       "icon": "build/icon.png",
-      "category": "AudioVideo"
+      "category": "AudioVideo",
+      "desktop": {
+        "Name": "MyTube",
+        "Comment": "YouTube video and audio downloader",
+        "Keywords": "youtube;downloader;video;audio;mp3;mp4",
+        "StartupWMClass": "mytube"
+      }
     },
     "asarUnpack": [
       "**/node_modules/yt-dlp-wrap/bin/**"
