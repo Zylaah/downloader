@@ -48,7 +48,7 @@
     },
     "linux": {
       "target": [
-        "flatpak"
+        "deb"
       ],
       "maintainer": "Bxthesda <lucien.schaeffer@hotmail.com>",
       "icon": "build/icon.png",
