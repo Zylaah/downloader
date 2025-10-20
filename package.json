@@ -25,7 +25,7 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "adm-zip": "^0.5.10",
     "electron-store": "^8.2.0",
     "yt-dlp-wrap": "^2.3.12"
   },
@@ -56,7 +56,6 @@
       "category": "AudioVideo"
     },
     "asarUnpack": [
-      "**/node_modules/@ffmpeg-installer/**/ffmpeg*",
       "**/node_modules/yt-dlp-wrap/bin/**"
     ],
     "extraResources": [

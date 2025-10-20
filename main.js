@@ -1,32 +1,49 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store');
-const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
-const os = require('os'); // Added os module
+const os = require('os');
+const https = require('https');
+const { execSync } = require('child_process');
 
 const store = new Store();
 const path = require('path');
 const fs = require('fs');
 const YTDlpWrap = require('yt-dlp-wrap').default;
 
-// Function to ensure ffmpeg binary is available
-function ensureFfmpegBinary() {
+// Function to download yt-dlp FFmpeg binary if not found
+async function ensureFfmpegBinary() {
   try {
-    // Use the @ffmpeg-installer/ffmpeg package which provides platform-specific binaries
-    let ffmpegPath = ffmpegInstaller.path;
+    let ffmpegPath;
+    const ffmpegExecutableName = os.platform() === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
     
-    if (app.isPackaged) {
-      // Adjust path for packaged app
-      ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
-    }
+    // Use a temporary directory for both packaged and development, similar to yt-dlp
+    const tempDir = path.join(os.tmpdir(), 'mytube-ffmpeg');
+    ffmpegPath = path.join(tempDir, ffmpegExecutableName);
     
     // Check if the ffmpeg binary exists
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
-      console.log('[Main Process] ffmpeg binary found at:', ffmpegPath);
-      console.log('[Main Process] ffmpeg version:', ffmpegInstaller.version);
+      console.log('[Main Process] yt-dlp FFmpeg binary found at:', ffmpegPath);
+      
+      // Make sure it's executable on Unix systems
+      if (os.platform() !== 'win32') {
+        try {
+          fs.chmodSync(ffmpegPath, '755');
+        } catch (chmodError) {
+          console.warn('[Main Process] Could not set ffmpeg executable permissions:', chmodError.message);
+        }
+      }
+      
       return ffmpegPath;
     }
     
-    console.warn('[Main Process] ffmpeg binary not found at expected path:', ffmpegPath);
+    console.log('[Main Process] yt-dlp FFmpeg binary not found, attempting to download...');
+    
+    // Download FFmpeg if not found
+    const downloadedPath = await downloadFfmpegBinary();
+    if (downloadedPath) {
+      return downloadedPath;
+    }
+    
+    console.warn('[Main Process] yt-dlp FFmpeg binary not found at expected path:', ffmpegPath);
   } catch (error) {
     console.error('[Main Process] Error getting ffmpeg path:', error);
   }
@@ -50,9 +67,195 @@ function ensureFfmpegBinary() {
   return null;
 }
 
-// Determine the correct ffmpeg path to use
-let ffmpegPathToUse = ensureFfmpegBinary();
-console.log('[Main Process] ffmpeg path determined as:', ffmpegPathToUse || 'none (will rely on system PATH)');
+// Function to download yt-dlp FFmpeg binary
+async function downloadFfmpegBinary() {
+  const AdmZip = require('adm-zip');
+  
+  try {
+    const platform = os.platform();
+    const arch = os.arch();
+    
+    console.log(`[Main Process] Downloading FFmpeg for platform: ${platform}, architecture: ${arch}`);
+    
+    // Determine the correct URL for yt-dlp FFmpeg builds
+    let url;
+    let isZip = false;
+    
+    if (platform === 'linux') {
+      if (arch === 'x64') {
+        url = 'https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz';
+      } else if (arch === 'arm64') {
+        url = 'https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz';
+      } else {
+        throw new Error(`Unsupported Linux architecture: ${arch}`);
+      }
+    } else if (platform === 'win32') {
+      isZip = true;
+      if (arch === 'x64') {
+        url = 'https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip';
+      } else if (arch === 'ia32') {
+        url = 'https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win32-gpl.zip';
+      } else {
+        throw new Error(`Unsupported Windows architecture: ${arch}`);
+      }
+    } else {
+      throw new Error(`Unsupported platform: ${platform}`);
+    }
+    
+    // Create temporary directory (like yt-dlp)
+    const tempDir = path.join(os.tmpdir(), 'mytube-ffmpeg');
+    const downloadPath = path.join(os.tmpdir(), `ffmpeg-${platform}-${arch}.${isZip ? 'zip' : 'tar.xz'}`);
+    
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    console.log(`[Main Process] Downloading from: ${url}`);
+    
+    // Download the file
+    await downloadFile(url, downloadPath);
+    console.log('[Main Process] FFmpeg download completed');
+    
+    // Extract the file
+    if (isZip) {
+      await extractZip(downloadPath, tempDir);
+    } else {
+      await extractTarXz(downloadPath, tempDir);
+    }
+    
+    // Set executable permissions on Unix systems
+    const ffmpegExecutableName = platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
+    const ffmpegPath = path.join(tempDir, ffmpegExecutableName);
+    if (fs.existsSync(ffmpegPath) && platform !== 'win32') {
+      fs.chmodSync(ffmpegPath, '755');
+    }
+    
+    console.log('[Main Process] FFmpeg setup completed successfully');
+    return ffmpegPath;
+    
+  } catch (error) {
+    console.error('[Main Process] Failed to download FFmpeg:', error);
+    return null;
+  }
+}
+
+// Helper function to download a file
+function downloadFile(url, outputPath) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(outputPath);
+    
+    https.get(url, (response) => {
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        // Follow redirect
+        downloadFile(response.headers.location, outputPath).then(resolve).catch(reject);
+        return;
+      }
+      
+      if (response.statusCode !== 200) {
+        reject(new Error(`Failed to download: ${response.statusCode}`));
+        return;
+      }
+      
+      response.pipe(file);
+      
+      file.on('finish', () => {
+        file.close();
+        resolve();
+      });
+      
+      file.on('error', (err) => {
+        fs.unlink(outputPath, () => {}); // Delete the file on error
+        reject(err);
+      });
+    }).on('error', (err) => {
+      reject(err);
+    });
+  });
+}
+
+// Helper function to extract tar.xz files
+function extractTarXz(tarPath, extractPath) {
+  try {
+    const tempExtractPath = path.join(os.tmpdir(), 'ffmpeg-extract-temp');
+    
+    if (!fs.existsSync(tempExtractPath)) {
+      fs.mkdirSync(tempExtractPath, { recursive: true });
+    }
+    
+    // Extract the tar.xz file
+    execSync(`tar -xf "${tarPath}" -C "${tempExtractPath}"`, { stdio: 'inherit' });
+    
+    // Find the ffmpeg binary (it's in a subdirectory like ffmpeg-master-*/bin/ffmpeg)
+    const extractedDirs = fs.readdirSync(tempExtractPath);
+    if (extractedDirs.length > 0) {
+      const ffmpegDir = path.join(tempExtractPath, extractedDirs[0], 'bin');
+      const ffmpegBinary = path.join(ffmpegDir, 'ffmpeg');
+      
+      if (fs.existsSync(ffmpegBinary)) {
+        // Copy ffmpeg binary to the target directory
+        if (!fs.existsSync(extractPath)) {
+          fs.mkdirSync(extractPath, { recursive: true });
+        }
+        fs.copyFileSync(ffmpegBinary, path.join(extractPath, 'ffmpeg'));
+        console.log('[Main Process] FFmpeg binary copied to:', path.join(extractPath, 'ffmpeg'));
+      }
+    }
+    
+    // Clean up
+    fs.unlinkSync(tarPath);
+    fs.rmSync(tempExtractPath, { recursive: true, force: true });
+    
+    console.log('[Main Process] Tar.xz extraction completed');
+  } catch (error) {
+    console.error('[Main Process] Tar.xz extraction failed:', error.message);
+    throw error;
+  }
+}
+
+// Helper function to extract zip files
+function extractZip(zipPath, extractPath) {
+  const AdmZip = require('adm-zip');
+  
+  try {
+    const tempExtractPath = path.join(os.tmpdir(), 'ffmpeg-extract-temp');
+    
+    if (!fs.existsSync(tempExtractPath)) {
+      fs.mkdirSync(tempExtractPath, { recursive: true });
+    }
+    
+    // Extract the zip file
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(tempExtractPath, true);
+    
+    // Find the ffmpeg binary (it's in a subdirectory like ffmpeg-master-*/bin/ffmpeg.exe)
+    const extractedDirs = fs.readdirSync(tempExtractPath);
+    if (extractedDirs.length > 0) {
+      const ffmpegDir = path.join(tempExtractPath, extractedDirs[0], 'bin');
+      const ffmpegBinary = path.join(ffmpegDir, 'ffmpeg.exe');
+      
+      if (fs.existsSync(ffmpegBinary)) {
+        // Copy ffmpeg binary to the target directory
+        if (!fs.existsSync(extractPath)) {
+          fs.mkdirSync(extractPath, { recursive: true });
+        }
+        fs.copyFileSync(ffmpegBinary, path.join(extractPath, 'ffmpeg.exe'));
+        console.log('[Main Process] FFmpeg binary copied to:', path.join(extractPath, 'ffmpeg.exe'));
+      }
+    }
+    
+    // Clean up
+    fs.unlinkSync(zipPath);
+    fs.rmSync(tempExtractPath, { recursive: true, force: true });
+    
+    console.log('[Main Process] Zip extraction completed');
+  } catch (error) {
+    console.error('[Main Process] Zip extraction failed:', error.message);
+    throw error;
+  }
+}
+
+// Determine the correct ffmpeg path to use (will be set when needed)
+let ffmpegPathToUse = null;
 
 // Determine the yt-dlp executable name based on OS
 let ytDlpExecutableName;
@@ -155,9 +358,9 @@ ipcMain.handle('check-yt-dlp-availability', async () => {
 });
 
 // Add IPC handler to check ffmpeg availability
-ipcMain.handle('check-ffmpeg-availability', () => {
+ipcMain.handle('check-ffmpeg-availability', async () => {
   try {
-    const binaryPath = ensureFfmpegBinary();
+    const binaryPath = await ensureFfmpegBinary();
     if (binaryPath) {
       return { available: true, path: binaryPath };
     } else {
@@ -303,7 +506,7 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
     ];
 
     // Ensure we have the latest ffmpeg path
-    const currentFfmpegPath = ensureFfmpegBinary();
+    const currentFfmpegPath = await ensureFfmpegBinary();
     if (currentFfmpegPath) {
       execArgs.push('--ffmpeg-location', currentFfmpegPath);
     }
@@ -529,8 +732,10 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
       ];
     }
 
-    if (ffmpegPathToUse) {
-      execArgs.push('--ffmpeg-location', ffmpegPathToUse);
+    // Ensure we have the latest ffmpeg path
+    const currentFfmpegPath = await ensureFfmpegBinary();
+    if (currentFfmpegPath) {
+      execArgs.push('--ffmpeg-location', currentFfmpegPath);
     }
 
     await ytDlpWrap.exec(execArgs)

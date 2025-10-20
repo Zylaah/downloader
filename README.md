@@ -40,7 +40,10 @@ Follow these instructions to get a copy of the project up and running on your lo
     ```bash
     npm install
     ```
-    This will install all the necessary packages defined in `package.json`, including Electron, yt-dlp-wrap, ffmpeg-static, and electron-store.
+    This will install all the necessary packages defined in `package.json`, including Electron, yt-dlp-wrap, and electron-store.
+
+3.  **FFmpeg is automatically downloaded:**
+    The application uses yt-dlp-specific FFmpeg builds for better compatibility. Both yt-dlp and FFmpeg are automatically downloaded to temporary directories (`/tmp/mytube-yt-dlp/` and `/tmp/mytube-ffmpeg/` on Linux) when needed, so no manual setup is required.
 
 ## How to Run the Application
 
@@ -65,7 +68,7 @@ This command typically executes `electron .` as defined in your `package.json` s
 
 *   [Electron](https://www.electronjs.org/) - Framework for creating native applications with web technologies.
 *   [yt-dlp-wrap](https://github.com/yt-dlp-wrap/yt-dlp-wrap) - A Node.js wrapper for the yt-dlp CLI.
-*   [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) - Provides a static ffmpeg binary, crucial for audio conversion.
+*   [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds) - Static FFmpeg builds specifically patched for yt-dlp compatibility, ensuring reliable video/audio processing.
 *   [electron-store](https://github.com/sindresorhus/electron-store) - Used for persisting simple data like the download path.
 *   HTML, CSS, JavaScript
 
@@ -77,12 +80,13 @@ This command typically executes `electron .` as defined in your `package.json` s
 4.  Results are sent back to `renderer.js` and displayed.
 5.  The user selects a video and clicks "Download".
 6.  `renderer.js` sends an IPC message to `main.js` with the video URL and the chosen download path.
-7.  `main.js` uses `yt-dlp-wrap` to download the audio (`-f bestaudio/best`), extract it (`-x`), and convert it to MP3 (`--audio-format mp3`) using `ffmpeg`. The `ffmpeg-static` package provides the necessary `ffmpeg` binary.
+7.  `main.js` uses `yt-dlp-wrap` to download the audio (`-f bestaudio/best`), extract it (`-x`), and convert it to MP3 (`--audio-format mp3`) using `ffmpeg`. The yt-dlp-specific FFmpeg builds provide the necessary `ffmpeg` binary with patches for better compatibility.
 8.  Progress updates from `yt-dlp` are relayed to `renderer.js` to update the progress bar.
 9.  The `electron-store` module is used to save and retrieve the user's preferred download directory.
 
 ## Acknowledgements
 
 *   The developers and community behind `yt-dlp` for the powerful download capabilities.
-*   The maintainers of `ffmpeg-static`, `yt-dlp-wrap`, and `electron-store` for these essential Node.js packages.
+*   The maintainers of [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds) for providing FFmpeg builds specifically patched for yt-dlp compatibility.
+*   The maintainers of `yt-dlp-wrap` and `electron-store` for these essential Node.js packages.
 

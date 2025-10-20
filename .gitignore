@@ -128,3 +128,5 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# FFmpeg and yt-dlp are downloaded to temp directories, not included in repo
