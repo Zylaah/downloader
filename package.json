@@ -56,7 +56,11 @@
       "category": "AudioVideo"
     },
     "asarUnpack": [
-      "**/node_modules/@ffmpeg-installer/**/ffmpeg*"
+      "**/node_modules/@ffmpeg-installer/**/ffmpeg*",
+      "**/node_modules/yt-dlp-wrap/bin/**"
+    ],
+    "extraResources": [
+      { "from": "resources/bin", "to": "bin" }
     ]
   }
 }
