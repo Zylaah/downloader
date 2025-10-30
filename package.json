@@ -36,7 +36,10 @@
       "output": "dist"
     },
     "files": [
-      "**/*"
+      "**/*",
+      "!.flatpak-builder{,/**}",
+      "!dist{,/**}",
+      "!builddir{,/**}"
     ],
     "win": {
       "target": "nsis",
@@ -62,9 +65,6 @@
     },
     "asarUnpack": [
       "**/node_modules/yt-dlp-wrap/bin/**"
-    ],
-    "extraResources": [
-      { "from": "resources/bin", "to": "bin" }
     ],
     "flatpak": {
       "runtime": "org.freedesktop.Platform",
