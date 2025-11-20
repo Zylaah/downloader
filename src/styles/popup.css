@@ -108,4 +108,89 @@
     min-height: 45px;
     display: flex;
     align-items: center;
+}
+
+/* Binary download popup styles */
+.binary-download-content {
+    margin-top: 10px;
+}
+
+.binary-download-message {
+    margin-bottom: 20px;
+    color: var(--gray-dark);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.binary-download-items {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.binary-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background-color: #f7f7f7;
+    border-radius: var(--radius);
+    border: 1px solid var(--gray-light);
+}
+
+.binary-item-info {
+    flex-grow: 1;
+}
+
+.binary-item-name {
+    font-weight: 600;
+    color: var(--gray-dark);
+    margin-bottom: 5px;
+    font-size: 15px;
+}
+
+.binary-item-status {
+    font-size: 13px;
+    color: var(--gray);
+}
+
+.binary-item-status.available {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+.binary-item-status.downloading {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.binary-item-status.error {
+    color: #f44336;
+    font-weight: 500;
+}
+
+.binary-download-btn {
+    min-width: 100px;
+    margin-left: 15px;
+}
+
+.binary-download-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.binary-download-progress {
+    margin-top: 15px;
+    padding: 12px;
+    background-color: #f0f7ff;
+    border-radius: var(--radius);
+    border: 1px solid #b3d9ff;
+}
+
+.binary-download-progress .progress-text {
+    text-align: center;
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 500;
 } 

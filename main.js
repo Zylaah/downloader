@@ -2,12 +2,15 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const Store = require('electron-store');
 const os = require('os');
 const https = require('https');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 
 const store = new Store();
 const path = require('path');
 const fs = require('fs');
 const YTDlpWrap = require('yt-dlp-wrap').default;
+
+// Toggle verbose download logging (progress, yt-dlp events, etc.)
+const ENABLE_DOWNLOAD_LOGS = false;
 
 // Function to download yt-dlp FFmpeg binary if not found
 async function ensureFfmpegBinary() {
@@ -372,6 +375,172 @@ ipcMain.handle('check-ffmpeg-availability', async () => {
   }
 });
 
+// IPC handler to download yt-dlp binary with progress
+ipcMain.handle('download-yt-dlp-binary', async (event) => {
+  try {
+    const binaryPath = await ensureYtDlpBinary();
+    if (binaryPath) {
+      return { success: true, path: binaryPath };
+    } else {
+      return { success: false, error: 'Failed to download yt-dlp binary' };
+    }
+  } catch (error) {
+    console.error('[Main Process] Error downloading yt-dlp binary:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to download ffmpeg binary with progress
+ipcMain.handle('download-ffmpeg-binary', async (event) => {
+  try {
+    const binaryPath = await downloadFfmpegBinary();
+    if (binaryPath) {
+      return { success: true, path: binaryPath };
+    } else {
+      return { success: false, error: 'Failed to download ffmpeg binary' };
+    }
+  } catch (error) {
+    console.error('[Main Process] Error downloading ffmpeg binary:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler to cancel active download
+ipcMain.handle('cancel-download', async (event) => {
+  try {
+    console.error('═══════════════════════════════════════════════════════');
+    console.error('[CANCEL] Cancel request received');
+    
+    let processId = event.sender.downloadProcessId;
+    console.error('[CANCEL] ProcessId from sender:', processId);
+    console.error('[CANCEL] Active downloads count:', activeDownloadProcesses.size);
+    console.error('[CANCEL] Active download IDs:', Array.from(activeDownloadProcesses.keys()));
+    console.error('[CANCEL] WebContents ID:', event.sender.id);
+    
+    // If no processId, try to find any active download for this WebContents
+    if (!processId && activeDownloadProcesses.size > 0) {
+      // Find the most recent process (highest processId number)
+      const processIds = Array.from(activeDownloadProcesses.keys());
+      processId = Math.max(...processIds);
+      console.error('[CANCEL] No processId found, using most recent:', processId);
+      // Update the sender's processId
+      event.sender.downloadProcessId = processId;
+    }
+    
+    if (!processId) {
+      console.error('[CANCEL] ERROR: No processId found and no active downloads');
+      return { success: false, message: 'No active download process ID found' };
+    }
+    
+    if (!activeDownloadProcesses.has(processId)) {
+      console.error('[CANCEL] WARNING: ProcessId not found in activeDownloadProcesses map');
+      // Try to find any active download
+      if (activeDownloadProcesses.size > 0) {
+        const firstProcessId = Array.from(activeDownloadProcesses.keys())[0];
+        console.error('[CANCEL] Trying to cancel first active download:', firstProcessId);
+        processId = firstProcessId;
+        event.sender.downloadProcessId = processId;
+      } else {
+        console.error('[CANCEL] ERROR: No active downloads found');
+        return { success: false, message: 'No active download to cancel' };
+      }
+    }
+    
+    const processInfo = activeDownloadProcesses.get(processId);
+    console.error('[CANCEL] Process info found:');
+    console.error('  - hasProcess:', !!processInfo.process);
+    console.error('  - hasEventEmitter:', !!processInfo.eventEmitter);
+    console.error('  - processPid:', processInfo.processPid);
+    console.error('  - processType:', processInfo.process ? typeof processInfo.process : 'none');
+    if (processInfo.eventEmitter) {
+      console.error('  - eventEmitter keys:', Object.keys(processInfo.eventEmitter).slice(0, 10));
+    }
+    
+    // Try to kill the yt-dlp process
+    let killed = false;
+    
+    // First, try using the process PID if available (most reliable)
+    if (processInfo.processPid && !killed) {
+      try {
+        if (os.platform() === 'win32') {
+          // Windows: use taskkill
+          execSync(`taskkill /PID ${processInfo.processPid} /T /F`, { stdio: 'ignore' });
+        } else {
+          // Unix: use process.kill with PID
+          const { kill } = require('process');
+          kill(processInfo.processPid, 'SIGTERM');
+        }
+        killed = true;
+        console.error('[CANCEL] ✓ SUCCESS: Process killed via PID:', processInfo.processPid);
+      } catch (killError) {
+        console.error('[CANCEL] ✗ Failed to kill via PID:', killError.message);
+      }
+    }
+    
+    // Try to access the child process from the event emitter
+    if (!killed && processInfo.eventEmitter) {
+      try {
+        // Check all possible property names where the child process might be stored
+    const possibleProcessProps = [
+      'spawnedProcess',
+      'childProcess',
+      'process',
+      '_process',
+      'spawnProcess',
+      'ytDlpProcess'
+    ];
+        
+        for (const prop of possibleProcessProps) {
+          if (processInfo.eventEmitter[prop] && typeof processInfo.eventEmitter[prop].kill === 'function') {
+            const childProc = processInfo.eventEmitter[prop];
+            if (!childProc.killed) {
+              childProc.kill('SIGTERM');
+              killed = true;
+              console.error(`[CANCEL] ✓ SUCCESS: Process killed via ${prop}`);
+              break;
+            }
+          }
+        }
+      } catch (killError) {
+        console.error('[CANCEL] ✗ Failed to kill via event emitter:', killError.message);
+      }
+    }
+    
+    // Try killing the stored process reference
+    if (!killed && processInfo.process) {
+      try {
+        if (typeof processInfo.process.kill === 'function' && !processInfo.process.killed) {
+          processInfo.process.kill('SIGTERM');
+          killed = true;
+          console.error('[CANCEL] ✓ SUCCESS: Process killed via stored process reference');
+        }
+      } catch (killError) {
+        console.error('[CANCEL] ✗ Failed to kill via stored process:', killError.message);
+      }
+    }
+    
+    // Clean up
+    activeDownloadProcesses.delete(processId);
+    event.sender.downloadProcessId = null;
+    
+    // Send cancellation event to renderer
+    event.sender.send('download-cancelled', 'Téléchargement annulé par l\'utilisateur.');
+    
+    if (killed) {
+      console.error('[CANCEL] ✓✓✓ Download cancelled successfully ✓✓✓');
+    } else {
+      console.error('[CANCEL] ⚠⚠⚠ Could not kill process, but marked as cancelled ⚠⚠⚠');
+    }
+    console.error('═══════════════════════════════════════════════════════');
+    
+    return { success: true };
+  } catch (error) {
+    console.error('[CANCEL] ✗✗✗ ERROR cancelling download:', error);
+    console.error('═══════════════════════════════════════════════════════');
+    return { success: false, error: error.message };
+  }
+});
+
 // Handle getting the default download path
 ipcMain.handle('get-default-download-path', async () => {
   const savedPath = store.get('downloadPath');
@@ -459,7 +628,79 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', function () {
+  // Clean up all active downloads before quitting
+  activeDownloadProcesses.forEach((processInfo, processId) => {
+    let killed = false;
+    
+    // Try killing via child process
+    if (processInfo.process && typeof processInfo.process.kill === 'function') {
+      try {
+        if (!processInfo.process.killed) {
+          processInfo.process.kill('SIGTERM');
+          killed = true;
+        }
+      } catch (error) {
+        console.warn('[Main Process] Could not kill process on app close:', error.message);
+      }
+    }
+    
+    // Try killing via event emitter
+    if (!killed && processInfo.eventEmitter) {
+      try {
+        if (processInfo.eventEmitter.spawnedProcess) {
+          processInfo.eventEmitter.spawnedProcess.kill('SIGTERM');
+        } else if (processInfo.eventEmitter.childProcess) {
+          processInfo.eventEmitter.childProcess.kill('SIGTERM');
+        }
+      } catch (error) {
+        console.warn('[Main Process] Could not kill via event emitter on app close:', error.message);
+      }
+    }
+    
+    if (killed) {
+      console.log('[Main Process] Killed download process on app close');
+    }
+  });
+  activeDownloadProcesses.clear();
+  
   if (process.platform !== 'darwin') app.quit();
+});
+
+// Handle app quit - cleanup all processes
+app.on('before-quit', () => {
+  activeDownloadProcesses.forEach((processInfo, processId) => {
+    let killed = false;
+    
+    // Try killing via child process
+    if (processInfo.process && typeof processInfo.process.kill === 'function') {
+      try {
+        if (!processInfo.process.killed) {
+          processInfo.process.kill('SIGTERM');
+          killed = true;
+        }
+      } catch (error) {
+        console.warn('[Main Process] Could not kill process on app quit:', error.message);
+      }
+    }
+    
+    // Try killing via event emitter
+    if (!killed && processInfo.eventEmitter) {
+      try {
+        if (processInfo.eventEmitter.spawnedProcess) {
+          processInfo.eventEmitter.spawnedProcess.kill('SIGTERM');
+        } else if (processInfo.eventEmitter.childProcess) {
+          processInfo.eventEmitter.childProcess.kill('SIGTERM');
+        }
+      } catch (error) {
+        console.warn('[Main Process] Could not kill via event emitter on app quit:', error.message);
+      }
+    }
+    
+    if (killed) {
+      console.log('[Main Process] Killed download process on app quit');
+    }
+  });
+  activeDownloadProcesses.clear();
 });
 
 ipcMain.on('download-audio', async (event, url, downloadPath) => {
@@ -471,12 +712,16 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
   let outputFilePath;
   let conversionSignalSent = false;
   let downloadReportedAsMostlyComplete = false;
+  const processId = Date.now() + Math.random(); // Unique ID for this download
+  event.sender.downloadProcessId = processId;
 
   try {
     if (downloadPath && fs.existsSync(downloadPath)) {
       outputFilePath = path.join(downloadPath, '%(title)s.%(ext)s');
       event.reply('download-progress', `Preparing to download to: ${downloadPath}`);
-      console.log(`Attempting to download audio for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`Attempting to download audio for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
+      }
     } else {
       const { filePath, canceled } = await dialog.showSaveDialog({
         title: 'Enregistrer l\'audio en tant que',
@@ -492,7 +737,9 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       }
       outputFilePath = filePath;
       event.reply('download-progress', 'Début du téléchargement...');
-      console.log(`Tentative de téléchargement de l'audio pour: ${url} vers ${outputFilePath}`);
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`Tentative de téléchargement de l'audio pour: ${url} vers ${outputFilePath}`);
+      }
     }
     
     const execArgs = [
@@ -511,39 +758,98 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       execArgs.push('--ffmpeg-location', currentFfmpegPath);
     }
 
-    await ytDlpWrap.exec(execArgs)
+    const downloadProcess = ytDlpWrap.exec(execArgs);
+    
+    // Try to access the underlying child process
+    // yt-dlp-wrap may expose it as spawnedProcess or childProcess
+    let childProcess = null;
+    const possibleProps = ['spawnedProcess', 'childProcess', 'process', '_process', 'spawnProcess', 'ytDlpProcess'];
+    
+    for (const prop of possibleProps) {
+      if (downloadProcess[prop] && typeof downloadProcess[prop].kill === 'function') {
+        childProcess = downloadProcess[prop];
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.error('[DOWNLOAD] Found child process at property:', prop);
+        }
+        break;
+      }
+    }
+    
+    // Store process reference for cancellation
+    // Also try to get the PID if available
+    let processPid = null;
+    if (childProcess && childProcess.pid) {
+      processPid = childProcess.pid;
+    } else if (downloadProcess.pid) {
+      processPid = downloadProcess.pid;
+    }
+    
+    activeDownloadProcesses.set(processId, {
+      process: childProcess,
+      eventEmitter: downloadProcess,
+      processPid: processPid,
+      url: url,
+      outputPath: outputFilePath
+    });
+    
+    if (ENABLE_DOWNLOAD_LOGS) {
+      console.error('[DOWNLOAD] Started. ProcessId:', processId, 'PID:', processPid);
+    }
+
+    await downloadProcess
     .on('progress', (progress) => {
-      console.log('[Main Process] RAW yt-dlp progress event:', JSON.stringify(progress));
+      if (ENABLE_DOWNLOAD_LOGS && progress && typeof progress.percent === 'string') {
+        const percent = parseFloat(progress.percent.replace('%', ''));
+        if (percent % 10 === 0 || percent >= 99) {
+          console.log(`[Main Process] Download progress: ${progress.percent}`);
+        }
+      }
       event.reply('download-progress', progress);
 
       if (!conversionSignalSent && progress && typeof progress.percent === 'string') {
         const currentPercent = parseFloat(progress.percent.replace('%',''));
-        if (currentPercent >= 99.5) { // Using 99.5 as a threshold for "download part done"
-          console.log('[Main Process] Download reported as essentially complete (>=99.5%).');
+        if (currentPercent >= 99.5) {
+          if (ENABLE_DOWNLOAD_LOGS) {
+            console.log('[Main Process] Download reported as essentially complete (>=99.5%).');
+            console.log('[Main Process] conversion-phase-started sent (triggered by download >=99.5% completion).');
+          }
           downloadReportedAsMostlyComplete = true; 
-          // This is now the PRIMARY and EARLIEST point to send conversion-phase-started
-          console.log('[Main Process] conversion-phase-started sent (triggered by download >=99.5% completion).');
           event.reply('conversion-phase-started');
           conversionSignalSent = true;
         }
       }
     })
     .on('ytDlpEvent', (eventType, eventData) => {
-      // Log ytDlpEvents for diagnostics, but DO NOT send conversion-phase-started from here anymore
-      // to simplify and avoid race conditions with the progress handler.
-      console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
-      // We could potentially set downloadReportedAsMostlyComplete = true here if a very specific 
-      // "download definitely finished, starting ffmpeg" event is found, but the progress >= 99.5% is more reliable.
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
+      }
     })
     .on('error', (error) => {
       console.error('Error during download:', error);
       event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
     })
-    .on('close', () => {
-      console.log('[Main Process] yt-dlp process close event fired.');
+    .on('close', (code) => {
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log('[Main Process] yt-dlp process close event fired. Exit code:', code);
+      }
+      
+      // Clean up process reference
+      activeDownloadProcesses.delete(processId);
+      event.sender.downloadProcessId = null;
+      
+      // If process was killed (cancelled), don't send completion
+      if (code === null || code === 143 || code === 'SIGTERM') {
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.log('[Main Process] Download was cancelled');
+        }
+        return;
+      }
+      
       // Fallback: If signal somehow wasn't sent, send it now.
       if (!conversionSignalSent) {
-        console.warn('[Main Process] \'close\' event: conversion-phase-started was missed. Sending now.');
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.warn('[Main Process] \'close\' event: conversion-phase-started was missed. Sending now.');
+        }
         event.reply('conversion-phase-started');
         // conversionSignalSent = true; // Not strictly needed here as it's the end, but good practice
       }
@@ -554,19 +860,26 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
         const finalMessage = downloadPath 
             ? `Téléchargement terminé. Audio enregistré dans ${downloadPath}. (Le nom du fichier est basé sur le titre de la vidéo)`
             : `Téléchargement terminé: ${outputFilePath}`;
-        console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+        }
         event.reply('download-complete', finalMessage);
       }, 3500); // Give renderer ~3.5s (simulation is 3s)
     });
 
   } catch (error) {
     console.error('yt-dlp execution error:', error);
+    activeDownloadProcesses.delete(processId);
+    event.sender.downloadProcessId = null;
     event.reply('download-error', `Failed to download audio: ${error.message || 'Unknown error'}`);
   }
 });
 
 // Store active video info processes to allow cancellation
 const activeVideoInfoProcesses = new Map();
+
+// Store active download processes to allow cancellation
+const activeDownloadProcesses = new Map();
 
 ipcMain.handle('get-video-info', async (event, url) => {
   try {
@@ -683,12 +996,16 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
   let outputFilePath;
   let conversionSignalSent = false;
   let downloadReportedAsMostlyComplete = false;
+  const processId = Date.now() + Math.random(); // Unique ID for this download
+  event.sender.downloadProcessId = processId;
 
   try {
     if (downloadPath && fs.existsSync(downloadPath)) {
       outputFilePath = path.join(downloadPath, '%(title)s.%(ext)s');
       event.reply('download-progress', `Preparing to download to: ${downloadPath}`);
-      console.log(`Attempting to download ${format} for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`Attempting to download ${format} for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
+      }
     } else {
       const fileExtension = format === 'audio' ? 'mp3' : 'mp4';
       const fileType = format === 'audio' ? 'audio' : 'vidéo';
@@ -708,7 +1025,9 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
       }
       outputFilePath = filePath;
       event.reply('download-progress', 'Début du téléchargement...');
-      console.log(`Tentative de téléchargement de ${format} pour: ${url} vers ${outputFilePath}`);
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`Tentative de téléchargement de ${format} pour: ${url} vers ${outputFilePath}`);
+      }
     }
     
     let execArgs;
@@ -738,33 +1057,97 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
       execArgs.push('--ffmpeg-location', currentFfmpegPath);
     }
 
-    await ytDlpWrap.exec(execArgs)
+    const downloadProcess = ytDlpWrap.exec(execArgs);
+    
+    // Try to access the underlying child process
+    // yt-dlp-wrap may expose it as spawnedProcess or childProcess
+    let childProcess = null;
+    const possibleProps = ['spawnedProcess', 'childProcess', 'process', '_process', 'spawnProcess', 'ytDlpProcess'];
+    
+    for (const prop of possibleProps) {
+      if (downloadProcess[prop] && typeof downloadProcess[prop].kill === 'function') {
+        childProcess = downloadProcess[prop];
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.error('[DOWNLOAD] Found child process at property:', prop);
+        }
+        break;
+      }
+    }
+    
+    // Store process reference for cancellation
+    // Also try to get the PID if available
+    let processPid = null;
+    if (childProcess && childProcess.pid) {
+      processPid = childProcess.pid;
+    } else if (downloadProcess.pid) {
+      processPid = downloadProcess.pid;
+    }
+    
+    activeDownloadProcesses.set(processId, {
+      process: childProcess,
+      eventEmitter: downloadProcess,
+      processPid: processPid,
+      url: url,
+      outputPath: outputFilePath
+    });
+    
+    if (ENABLE_DOWNLOAD_LOGS) {
+      console.error('[DOWNLOAD] Started. ProcessId:', processId, 'PID:', processPid);
+    }
+
+    await downloadProcess
     .on('progress', (progress) => {
-      console.log('[Main Process] RAW yt-dlp progress event:', JSON.stringify(progress));
+      if (ENABLE_DOWNLOAD_LOGS && progress && typeof progress.percent === 'string') {
+        const percent = parseFloat(progress.percent.replace('%', ''));
+        if (percent % 10 === 0 || percent >= 99) {
+          console.log(`[Main Process] Download progress: ${progress.percent}`);
+        }
+      }
       event.reply('download-progress', progress);
 
       if (!conversionSignalSent && progress && typeof progress.percent === 'string') {
         const currentPercent = parseFloat(progress.percent.replace('%',''));
         if (currentPercent >= 99.5) {
-          console.log('[Main Process] Download reported as essentially complete (>=99.5%)');
+          if (ENABLE_DOWNLOAD_LOGS) {
+            console.log('[Main Process] Download reported as essentially complete (>=99.5%)');
+            console.log('[Main Process] conversion-phase-started sent (triggered by download >=99.5% completion).');
+          }
           downloadReportedAsMostlyComplete = true; 
-          console.log('[Main Process] conversion-phase-started sent (triggered by download >=99.5% completion).');
           event.reply('conversion-phase-started');
           conversionSignalSent = true;
         }
       }
     })
     .on('ytDlpEvent', (eventType, eventData) => {
-      console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
+      }
     })
     .on('error', (error) => {
       console.error('Error during download:', error);
       event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
     })
-    .on('close', () => {
-      console.log('[Main Process] yt-dlp process close event fired.');
+    .on('close', (code) => {
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log('[Main Process] yt-dlp process close event fired. Exit code:', code);
+      }
+      
+      // Clean up process reference
+      activeDownloadProcesses.delete(processId);
+      event.sender.downloadProcessId = null;
+      
+      // If process was killed (cancelled), don't send completion
+      if (code === null || code === 143 || code === 'SIGTERM') {
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.log('[Main Process] Download was cancelled');
+        }
+        return;
+      }
+      
       if (!conversionSignalSent) {
-        console.warn('[Main Process] \'close\' event: conversion-phase-started was missed. Sending now.');
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.warn('[Main Process] \'close\' event: conversion-phase-started was missed. Sending now.');
+        }
         event.reply('conversion-phase-started');
       }
       
@@ -772,13 +1155,17 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
         const finalMessage = downloadPath 
             ? `Téléchargement terminé. ${format === 'audio' ? 'Audio' : 'Vidéo'} enregistré dans ${downloadPath}. (Le nom du fichier est basé sur le titre de la vidéo)`
             : `Téléchargement terminé: ${outputFilePath}`;
-        console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+        if (ENABLE_DOWNLOAD_LOGS) {
+          console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+        }
         event.reply('download-complete', finalMessage);
       }, 3500);
     });
 
   } catch (error) {
     console.error('yt-dlp execution error:', error);
+    activeDownloadProcesses.delete(processId);
+    event.sender.downloadProcessId = null;
     event.reply('download-error', `Failed to download ${format}: ${error.message || 'Unknown error'}`);
   }
 });

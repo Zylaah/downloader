@@ -51,6 +51,42 @@
 
         </div>
     </div>
+
+    <!-- Binary download popup -->
+    <div id="binaryDownloadPopup" class="popup-overlay">
+        <div class="popup-container">
+            <div class="popup-title">Téléchargement requis</div>
+            <div class="popup-close" id="closeBinaryDownloadPopup">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#555"/>
+                </svg>
+            </div>
+            <div class="binary-download-content">
+                <p class="binary-download-message" id="binaryDownloadMessage">
+                    Certains composants requis sont manquants. Veuillez les télécharger pour continuer.
+                </p>
+                <div class="binary-download-items">
+                    <div class="binary-item" id="ytDlpBinaryItem">
+                        <div class="binary-item-info">
+                            <div class="binary-item-name">yt-dlp</div>
+                            <div class="binary-item-status" id="ytDlpStatus">Non disponible</div>
+                        </div>
+                        <button id="downloadYtDlpBtn" class="btn-secondary binary-download-btn">Télécharger</button>
+                    </div>
+                    <div class="binary-item" id="ffmpegBinaryItem">
+                        <div class="binary-item-info">
+                            <div class="binary-item-name">FFmpeg</div>
+                            <div class="binary-item-status" id="ffmpegStatus">Non disponible</div>
+                        </div>
+                        <button id="downloadFfmpegBtn" class="btn-secondary binary-download-btn">Télécharger</button>
+                    </div>
+                </div>
+                <div class="binary-download-progress" id="binaryDownloadProgress" style="display: none;">
+                    <div class="progress-text" id="binaryDownloadProgressText">Téléchargement en cours...</div>
+                </div>
+            </div>
+        </div>
+    </div>
     
     <div class="app-content-wrapper">
         <div class="app-container">
@@ -89,7 +125,10 @@
                 <div class="progress-wrapper">
                     <div id="progressBarFill"></div>
                 </div>
-                <div id="progressBarText">0%</div>
+                <div class="progress-controls">
+                    <div id="progressBarText">0%</div>
+                    <button id="cancelDownloadBtn" class="cancel-download-btn" style="display: none;">Annuler</button>
+                </div>
             </div>
 
             <div id="completionNotification" class="completion-notification">

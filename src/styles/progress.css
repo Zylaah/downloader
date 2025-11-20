@@ -21,8 +21,38 @@
     width: 0%;
 }
 
+.progress-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
 #progressBarText {
+    flex-grow: 1;
     text-align: center;
     font-size: 14px;
     color: var(--gray);
+}
+
+.cancel-download-btn {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.cancel-download-btn:hover {
+    background-color: #d32f2f;
+    transform: translateY(-1px);
+}
+
+.cancel-download-btn:active {
+    transform: translateY(0);
 } 
