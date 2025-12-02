@@ -428,14 +428,20 @@ downloadButton.addEventListener('click', () => {
     });
 
     window.electronAPI.onDownloadCancelled(() => {
-        progressContainer.style.display = 'none';
-        cancelDownloadBtn.style.display = 'none'; // Hide cancel button
-        downloadButton.style.display = 'inline-block';
+        // Clear any running simulation
         conversionSimulationActive = false;
         if (window.conversionSimulationInterval) {
             clearInterval(window.conversionSimulationInterval);
+            window.conversionSimulationInterval = null;
         }
+        
+        // Reset all listeners
         resetListeners();
+        
+        // Reset UI back to search screen
+        resetUI();
+        
+        displayUserMessage('Téléchargement annulé', 'error');
     });
 });
 
@@ -772,15 +778,19 @@ cancelDownloadBtn.addEventListener('click', async () => {
         const result = await window.electronAPI.cancelDownload();
         if (result.success) {
             displayUserMessage('Téléchargement annulé', 'error');
-            progressContainer.style.display = 'none';
-            cancelDownloadBtn.style.display = 'none';
-            downloadButton.style.display = 'inline-block';
+            
+            // Clear any running simulation
             conversionSimulationActive = false;
             if (window.conversionSimulationInterval) {
                 clearInterval(window.conversionSimulationInterval);
                 window.conversionSimulationInterval = null;
             }
+            
+            // Reset all listeners
             resetListeners();
+            
+            // Reset UI back to search screen
+            resetUI();
         } else {
             displayUserMessage('Impossible d\'annuler le téléchargement', 'error');
         }

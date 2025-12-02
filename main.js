@@ -18,9 +18,17 @@ async function ensureFfmpegBinary() {
     let ffmpegPath;
     const ffmpegExecutableName = os.platform() === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
     
-    // Use a temporary directory for both packaged and development, similar to yt-dlp
-    const tempDir = path.join(os.tmpdir(), 'mytube-ffmpeg');
-    ffmpegPath = path.join(tempDir, ffmpegExecutableName);
+    // Use app data directory for persistent storage across sessions
+    const { app } = require('electron');
+    const appDataDir = app.getPath('userData');
+    const binariesDir = path.join(appDataDir, 'binaries');
+    
+    // Ensure binaries directory exists
+    if (!fs.existsSync(binariesDir)) {
+      fs.mkdirSync(binariesDir, { recursive: true });
+    }
+    
+    ffmpegPath = path.join(binariesDir, ffmpegExecutableName);
     
     // Check if the ffmpeg binary exists
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
@@ -105,12 +113,14 @@ async function downloadFfmpegBinary() {
       throw new Error(`Unsupported platform: ${platform}`);
     }
     
-    // Create temporary directory (like yt-dlp)
-    const tempDir = path.join(os.tmpdir(), 'mytube-ffmpeg');
-    const downloadPath = path.join(os.tmpdir(), `ffmpeg-${platform}-${arch}.${isZip ? 'zip' : 'tar.xz'}`);
+    // Use app data directory for persistent storage
+    const { app } = require('electron');
+    const appDataDir = app.getPath('userData');
+    const binariesDir = path.join(appDataDir, 'binaries');
+    const downloadPath = path.join(appDataDir, `ffmpeg-${platform}-${arch}.${isZip ? 'zip' : 'tar.xz'}`);
     
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    if (!fs.existsSync(binariesDir)) {
+      fs.mkdirSync(binariesDir, { recursive: true });
     }
     
     console.log(`[Main Process] Downloading from: ${url}`);
@@ -121,14 +131,14 @@ async function downloadFfmpegBinary() {
     
     // Extract the file
     if (isZip) {
-      await extractZip(downloadPath, tempDir);
+      await extractZip(downloadPath, binariesDir);
     } else {
-      await extractTarXz(downloadPath, tempDir);
+      await extractTarXz(downloadPath, binariesDir);
     }
     
     // Set executable permissions on Unix systems
     const ffmpegExecutableName = platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
-    const ffmpegPath = path.join(tempDir, ffmpegExecutableName);
+    const ffmpegPath = path.join(binariesDir, ffmpegExecutableName);
     if (fs.existsSync(ffmpegPath) && platform !== 'win32') {
       fs.chmodSync(ffmpegPath, '755');
     }
@@ -308,21 +318,32 @@ if (app.isPackaged) {
 
 // Function to download yt-dlp binary if not found
 async function ensureYtDlpBinary() {
+  // First check if we have a system or user-installed yt-dlp
   if (ytDlpBinaryPath && fs.existsSync(ytDlpBinaryPath)) {
     console.log('[Main Process] yt-dlp binary found at:', ytDlpBinaryPath);
     return ytDlpBinaryPath;
   }
 
-  console.log('[Main Process] yt-dlp binary not found, attempting to download...');
-  
+  // Check if we have a downloaded yt-dlp in our persistent directory
   try {
-    // Create a temporary directory for the binary
-    const tempDir = path.join(os.tmpdir(), 'mytube-yt-dlp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    const { app } = require('electron');
+    const appDataDir = app.getPath('userData');
+    const binariesDir = path.join(appDataDir, 'binaries');
+    
+    // Ensure binaries directory exists
+    if (!fs.existsSync(binariesDir)) {
+      fs.mkdirSync(binariesDir, { recursive: true });
     }
     
-    const binaryPath = path.join(tempDir, ytDlpExecutableName);
+    const binaryPath = path.join(binariesDir, ytDlpExecutableName);
+    
+    // Check if we already have it downloaded
+    if (fs.existsSync(binaryPath)) {
+      console.log('[Main Process] yt-dlp binary found in app data at:', binaryPath);
+      return binaryPath;
+    }
+    
+    console.log('[Main Process] yt-dlp binary not found, attempting to download...');
     
     // Download the latest yt-dlp binary
     await YTDlpWrap.downloadFromGithub(binaryPath);
@@ -342,6 +363,7 @@ async function ensureYtDlpBinary() {
 
 // Initialize yt-dlp-wrap with the determined path if available
 let ytDlpWrap = ytDlpBinaryPath ? new YTDlpWrap(ytDlpBinaryPath) : new YTDlpWrap();
+let currentBinaryPath = ytDlpBinaryPath;
 console.log('[Main Process] yt-dlp binary path used for YTDlpWrap init:', ytDlpBinaryPath || 'default (not found, relying on PATH)');
 
 // Track if we're in the middle of cleanup to prevent EBUSY errors
@@ -351,14 +373,20 @@ let needsNewInstance = false;
 
 // Helper function to get or create a fresh ytDlpWrap instance
 function getYtDlpWrap(binaryPath) {
+  // If binary path changed (e.g., downloaded during runtime), create new instance
+  if (binaryPath && binaryPath !== currentBinaryPath) {
+    console.log('[YTDLP] Binary path changed from', currentBinaryPath, 'to', binaryPath);
+    console.log('[YTDLP] Creating fresh ytDlpWrap instance with new binary path');
+    ytDlpWrap = new YTDlpWrap(binaryPath);
+    currentBinaryPath = binaryPath;
+    needsNewInstance = false;
+  }
   // If we need a new instance (after error/cancel), create one
-  if (needsNewInstance) {
+  else if (needsNewInstance) {
     console.log('[YTDLP] Creating fresh ytDlpWrap instance after error/cancel');
     ytDlpWrap = binaryPath ? new YTDlpWrap(binaryPath) : new YTDlpWrap();
+    currentBinaryPath = binaryPath;
     needsNewInstance = false;
-  } else if (binaryPath) {
-    // Update binary path if provided
-    ytDlpWrap.setBinaryPath(binaryPath);
   }
   return ytDlpWrap;
 }
@@ -394,7 +422,8 @@ ipcMain.handle('check-yt-dlp-availability', async () => {
   try {
     const binaryPath = await ensureYtDlpBinary();
     if (binaryPath) {
-      ytDlpWrap.setBinaryPath(binaryPath);
+      // Get a fresh ytDlpWrap instance if binary path changed
+      getYtDlpWrap(binaryPath);
       return { available: true, path: binaryPath };
     } else {
       return { available: false, error: 'Unable to find or download yt-dlp binary' };
@@ -425,6 +454,8 @@ ipcMain.handle('download-yt-dlp-binary', async (event) => {
   try {
     const binaryPath = await ensureYtDlpBinary();
     if (binaryPath) {
+      // Get a fresh ytDlpWrap instance if binary path changed
+      getYtDlpWrap(binaryPath);
       return { success: true, path: binaryPath };
     } else {
       return { success: false, error: 'Failed to download yt-dlp binary' };
@@ -561,6 +592,119 @@ ipcMain.handle('cancel-download', async (event) => {
         }
       } catch (killError) {
         console.error('[CANCEL] ✗ Failed to kill via stored process:', killError.message);
+      }
+    }
+    
+    // Clean up partial/temporary files
+    if (processInfo.outputPath) {
+      console.error('[CANCEL] Cleaning up partial and output files for:', processInfo.outputPath);
+      
+      try {
+        // Handle template paths like %(title)s.%(ext)s
+        if (processInfo.outputPath.includes('%(title)s') || processInfo.outputPath.includes('%(ext)s')) {
+          // For directory output with template, we need to find and delete all related files
+          const outputDir = path.dirname(processInfo.outputPath);
+          
+          if (fs.existsSync(outputDir)) {
+            const files = fs.readdirSync(outputDir);
+            
+            // Get current timestamp to identify recently created files
+            const cancelTime = Date.now();
+            const timeThreshold = 5 * 60 * 1000; // 5 minutes
+            
+            // Delete common partial/temp file patterns AND actual output files created by yt-dlp
+            const patterns = [
+              /\.part$/,           // .part files (partial downloads)
+              /\.ytdl$/,           // .ytdl files (yt-dlp temp)
+              /\.temp\./,          // .temp.* files
+              /\.f\d+\./,          // fragment files like .f123.mp4
+              /\.webm$/,           // temporary webm files
+              /\.m4a$/,            // temporary audio files before conversion
+              /\.mp3$/,            // actual MP3 files (could be corrupted)
+              /\.mp4$/,            // actual MP4 files (could be corrupted)
+              /\.mkv$/,            // actual MKV files (could be corrupted)
+              /\.avi$/,            // actual AVI files (could be corrupted)
+              /\.wav$/,            // actual WAV files (could be corrupted)
+            ];
+            
+            files.forEach(file => {
+              const fullPath = path.join(outputDir, file);
+              const shouldDelete = patterns.some(pattern => pattern.test(file));
+              
+              if (shouldDelete) {
+                try {
+                  // Check if file was created recently (within the threshold)
+                  const stats = fs.statSync(fullPath);
+                  const fileAge = cancelTime - stats.mtimeMs;
+                  
+                  if (fileAge < timeThreshold) {
+                    fs.unlinkSync(fullPath);
+                    console.error('[CANCEL] Deleted file:', file);
+                  } else {
+                    console.error('[CANCEL] Skipping old file:', file);
+                  }
+                } catch (deleteError) {
+                  console.error('[CANCEL] Could not delete file:', file, deleteError.message);
+                }
+              }
+            });
+          }
+        } else {
+          // Specific file path - delete the actual output file and all related files
+          const filesToDelete = [
+            processInfo.outputPath,              // The actual output file (.mp3, .mp4, etc.)
+            processInfo.outputPath + '.part',    // Partial download
+            processInfo.outputPath + '.ytdl',    // yt-dlp temp
+            processInfo.outputPath + '.temp',    // Temp file
+          ];
+          
+          // Also check for intermediate files (before ffmpeg conversion)
+          const dir = path.dirname(processInfo.outputPath);
+          const basename = path.basename(processInfo.outputPath, path.extname(processInfo.outputPath));
+          const ext = path.extname(processInfo.outputPath);
+          
+          // Add potential intermediate files with different extensions
+          const intermediateExtensions = ['.webm', '.m4a', '.mkv', '.avi', '.wav'];
+          intermediateExtensions.forEach(intermediateExt => {
+            if (intermediateExt !== ext) {
+              filesToDelete.push(path.join(dir, basename + intermediateExt));
+            }
+          });
+          
+          // Add fragment files
+          filesToDelete.push(path.join(dir, basename + '.f*'));
+          
+          filesToDelete.forEach(filePath => {
+            if (filePath.includes('*')) {
+              // Handle glob patterns
+              const dirPath = path.dirname(filePath);
+              const pattern = path.basename(filePath);
+              if (fs.existsSync(dirPath)) {
+                const files = fs.readdirSync(dirPath);
+                const regex = new RegExp(pattern.replace('*', '.*'));
+                files.forEach(file => {
+                  if (regex.test(file)) {
+                    try {
+                      fs.unlinkSync(path.join(dirPath, file));
+                      console.error('[CANCEL] Deleted file:', file);
+                    } catch (deleteError) {
+                      console.error('[CANCEL] Could not delete file:', file, deleteError.message);
+                    }
+                  }
+                });
+              }
+            } else if (fs.existsSync(filePath)) {
+              try {
+                fs.unlinkSync(filePath);
+                console.error('[CANCEL] Deleted file:', path.basename(filePath));
+              } catch (deleteError) {
+                console.error('[CANCEL] Could not delete:', filePath, deleteError.message);
+              }
+            }
+          });
+        }
+      } catch (cleanupError) {
+        console.error('[CANCEL] Error during file cleanup:', cleanupError.message);
       }
     }
     
