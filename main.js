@@ -341,8 +341,53 @@ async function ensureYtDlpBinary() {
 }
 
 // Initialize yt-dlp-wrap with the determined path if available
-const ytDlpWrap = ytDlpBinaryPath ? new YTDlpWrap(ytDlpBinaryPath) : new YTDlpWrap();
+let ytDlpWrap = ytDlpBinaryPath ? new YTDlpWrap(ytDlpBinaryPath) : new YTDlpWrap();
 console.log('[Main Process] yt-dlp binary path used for YTDlpWrap init:', ytDlpBinaryPath || 'default (not found, relying on PATH)');
+
+// Track if we're in the middle of cleanup to prevent EBUSY errors
+let isCleaningUp = false;
+let cleanupPromise = null;
+let needsNewInstance = false;
+
+// Helper function to get or create a fresh ytDlpWrap instance
+function getYtDlpWrap(binaryPath) {
+  // If we need a new instance (after error/cancel), create one
+  if (needsNewInstance) {
+    console.log('[YTDLP] Creating fresh ytDlpWrap instance after error/cancel');
+    ytDlpWrap = binaryPath ? new YTDlpWrap(binaryPath) : new YTDlpWrap();
+    needsNewInstance = false;
+  } else if (binaryPath) {
+    // Update binary path if provided
+    ytDlpWrap.setBinaryPath(binaryPath);
+  }
+  return ytDlpWrap;
+}
+
+// Helper function to wait for cleanup to complete
+async function waitForCleanup() {
+  if (isCleaningUp && cleanupPromise) {
+    console.log('[CLEANUP] Waiting for previous cleanup to complete...');
+    await cleanupPromise;
+  }
+}
+
+// Helper function to perform cleanup after cancellation
+function performCleanup() {
+  if (!isCleaningUp) {
+    isCleaningUp = true;
+    needsNewInstance = true; // Mark that we need a new instance
+    cleanupPromise = new Promise(resolve => {
+      // Give yt-dlp-wrap time to clean up internal state
+      setTimeout(() => {
+        isCleaningUp = false;
+        cleanupPromise = null;
+        console.log('[CLEANUP] Cleanup complete, ready for new operations');
+        resolve();
+      }, 500); // 500ms delay to allow proper cleanup
+    });
+  }
+  return cleanupPromise;
+}
 
 // Add IPC handler to check yt-dlp availability
 ipcMain.handle('check-yt-dlp-availability', async () => {
@@ -533,9 +578,20 @@ ipcMain.handle('cancel-download', async (event) => {
     }
     console.error('═══════════════════════════════════════════════════════');
     
+    // Trigger cleanup to prevent EBUSY errors on next operation
+    performCleanup();
+    
     return { success: true };
   } catch (error) {
     console.error('[CANCEL] ✗✗✗ ERROR cancelling download:', error);
+    
+    // Clean up even on error to prevent "busy" state
+    if (processId && activeDownloadProcesses.has(processId)) {
+      activeDownloadProcesses.delete(processId);
+      event.sender.downloadProcessId = null;
+      console.error('[CANCEL] Cleaned up process map despite error');
+    }
+    
     console.error('═══════════════════════════════════════════════════════');
     return { success: false, error: error.message };
   }
@@ -709,6 +765,23 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
     return;
   }
 
+  // Wait for any cleanup to complete before starting new operation
+  await waitForCleanup();
+
+  // Check if there's already an active download
+  if (activeDownloadProcesses.size > 0) {
+    console.error('[DOWNLOAD] ERROR: Another download is already in progress');
+    event.reply('download-error', 'Un téléchargement est déjà en cours. Veuillez attendre qu\'il se termine.');
+    return;
+  }
+
+  // Ensure we have a valid yt-dlp binary before proceeding
+  const binaryPath = await ensureYtDlpBinary();
+  if (!binaryPath) {
+    event.reply('download-error', 'Error: Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.');
+    return;
+  }
+
   let outputFilePath;
   let conversionSignalSent = false;
   let downloadReportedAsMostlyComplete = false;
@@ -758,7 +831,9 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       execArgs.push('--ffmpeg-location', currentFfmpegPath);
     }
 
-    const downloadProcess = ytDlpWrap.exec(execArgs);
+    // Get a fresh ytDlpWrap instance if needed
+    const ytDlp = getYtDlpWrap(binaryPath);
+    const downloadProcess = ytDlp.exec(execArgs);
     
     // Try to access the underlying child process
     // yt-dlp-wrap may expose it as spawnedProcess or childProcess
@@ -826,7 +901,12 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
     })
     .on('error', (error) => {
       console.error('Error during download:', error);
+      // Clean up process reference on error
+      activeDownloadProcesses.delete(processId);
+      event.sender.downloadProcessId = null;
       event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
+      // Trigger cleanup to prevent EBUSY errors on next operation
+      performCleanup();
     })
     .on('close', (code) => {
       if (ENABLE_DOWNLOAD_LOGS) {
@@ -872,6 +952,9 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
     activeDownloadProcesses.delete(processId);
     event.sender.downloadProcessId = null;
     event.reply('download-error', `Failed to download audio: ${error.message || 'Unknown error'}`);
+    
+    // Trigger cleanup to prevent EBUSY errors on next operation
+    performCleanup();
   }
 });
 
@@ -887,23 +970,26 @@ ipcMain.handle('get-video-info', async (event, url) => {
       return { error: 'Please provide a valid URL.' };
     }
 
-    // Ensure we have a valid yt-dlp binary before proceeding
-    const binaryPath = await ensureYtDlpBinary();
-    if (!binaryPath) {
-      return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
-    }
+  // Wait for any cleanup to complete before starting new operation
+  await waitForCleanup();
 
-    // Update ytDlpWrap to use the correct binary path
-    ytDlpWrap.setBinaryPath(binaryPath);
+  // Ensure we have a valid yt-dlp binary before proceeding
+  const binaryPath = await ensureYtDlpBinary();
+  if (!binaryPath) {
+    return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
+  }
 
-    console.log(`Getting video info for: ${url}`);
+  console.log(`Getting video info for: ${url}`);
+  
+  return new Promise((resolve) => {
+    const processId = Date.now() + Math.random(); // Unique ID for this process
+    let isResolved = false;
     
-    return new Promise((resolve) => {
-      const processId = Date.now() + Math.random(); // Unique ID for this process
-      let isResolved = false;
-      
-      // Use execPromise for reliable output capture
-      const promise = ytDlpWrap.execPromise([
+    // Get a fresh ytDlpWrap instance if needed
+    const ytDlp = getYtDlpWrap(binaryPath);
+    
+    // Use execPromise for reliable output capture
+    const promise = ytDlp.execPromise([
         url.trim(),
         '--print', '%(title)s',
         '--no-download',
@@ -983,15 +1069,22 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
     return;
   }
 
+  // Wait for any cleanup to complete before starting new operation
+  await waitForCleanup();
+
+  // Check if there's already an active download
+  if (activeDownloadProcesses.size > 0) {
+    console.error('[DOWNLOAD] ERROR: Another download is already in progress');
+    event.reply('download-error', 'Un téléchargement est déjà en cours. Veuillez attendre qu\'il se termine.');
+    return;
+  }
+
   // Ensure we have a valid yt-dlp binary before proceeding
   const binaryPath = await ensureYtDlpBinary();
   if (!binaryPath) {
     event.reply('download-error', 'Error: Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.');
     return;
   }
-
-  // Update ytDlpWrap to use the correct binary path
-  ytDlpWrap.setBinaryPath(binaryPath);
 
   let outputFilePath;
   let conversionSignalSent = false;
@@ -1057,7 +1150,9 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
       execArgs.push('--ffmpeg-location', currentFfmpegPath);
     }
 
-    const downloadProcess = ytDlpWrap.exec(execArgs);
+    // Get a fresh ytDlpWrap instance if needed
+    const ytDlp = getYtDlpWrap(binaryPath);
+    const downloadProcess = ytDlp.exec(execArgs);
     
     // Try to access the underlying child process
     // yt-dlp-wrap may expose it as spawnedProcess or childProcess
@@ -1125,7 +1220,12 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
     })
     .on('error', (error) => {
       console.error('Error during download:', error);
+      // Clean up process reference on error
+      activeDownloadProcesses.delete(processId);
+      event.sender.downloadProcessId = null;
       event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
+      // Trigger cleanup to prevent EBUSY errors on next operation
+      performCleanup();
     })
     .on('close', (code) => {
       if (ENABLE_DOWNLOAD_LOGS) {
@@ -1167,6 +1267,9 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
     activeDownloadProcesses.delete(processId);
     event.sender.downloadProcessId = null;
     event.reply('download-error', `Failed to download ${format}: ${error.message || 'Unknown error'}`);
+    
+    // Trigger cleanup to prevent EBUSY errors on next operation
+    performCleanup();
   }
 });
 
@@ -1176,23 +1279,26 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
       return { error: 'Please enter a search query.' };
     }
 
-    // Ensure we have a valid yt-dlp binary before proceeding
-    const binaryPath = await ensureYtDlpBinary();
-    if (!binaryPath) {
-      return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
-    }
+  // Wait for any cleanup to complete before starting new operation
+  await waitForCleanup();
 
-    // Update ytDlpWrap to use the correct binary path
-    ytDlpWrap.setBinaryPath(binaryPath);
+  // Ensure we have a valid yt-dlp binary before proceeding
+  const binaryPath = await ensureYtDlpBinary();
+  if (!binaryPath) {
+    return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
+  }
 
-    console.log(`Searching YouTube for: ${query}`);
+  console.log(`Searching YouTube for: ${query}`);
+  
+  const searchQuery = `ytsearch${maxResults}:${query.trim()}`;
+  
+  // Get a fresh ytDlpWrap instance if needed
+  const ytDlp = getYtDlpWrap(binaryPath);
+  
+  return new Promise((resolve) => { // No reject, always resolve with status
+    const searchResults = [];
     
-    const searchQuery = `ytsearch${maxResults}:${query.trim()}`;
-    
-    return new Promise((resolve) => { // No reject, always resolve with status
-      const searchResults = [];
-      
-      ytDlpWrap.execPromise([
+    ytDlp.execPromise([
         searchQuery,
         '--flat-playlist',
         '--format=best',
