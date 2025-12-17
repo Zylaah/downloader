@@ -1003,6 +1003,31 @@ async function checkAndShowBinaryPopup() {
   }
 }
 
+// Normalize release notes (GitHub HTML -> readable plain text)
+function formatReleaseNotes(rawNotes) {
+    if (!rawNotes || typeof rawNotes !== 'string') {
+        return '';
+    }
+
+    // Preserve basic structure: paragraphs and line breaks
+    let html = rawNotes
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n');
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const text = (tempDiv.textContent || tempDiv.innerText || '').trim();
+
+    if (!text) {
+        return '';
+    }
+
+    if (text.length > 1500) {
+        return text.slice(0, 1500) + '…';
+    }
+    return text;
+}
+
 // Handle application auto-updates with custom UI
 function initAutoUpdateHandling() {
     if (!window.electronAPI || !window.electronAPI.checkForUpdates) {
@@ -1113,11 +1138,14 @@ function initAutoUpdateHandling() {
         }
 
         if (info.releaseNotes && typeof info.releaseNotes === 'string' && updateReleaseNotes) {
-            const notes = info.releaseNotes.length > 1500
-                ? info.releaseNotes.slice(0, 1500) + '…'
-                : info.releaseNotes;
-            updateReleaseNotes.style.display = 'block';
-            updateReleaseNotes.textContent = notes;
+            const notes = formatReleaseNotes(info.releaseNotes);
+            if (notes) {
+                updateReleaseNotes.style.display = 'block';
+                updateReleaseNotes.textContent = notes;
+            } else {
+                updateReleaseNotes.style.display = 'none';
+                updateReleaseNotes.textContent = '';
+            }
         } else if (updateReleaseNotes) {
             updateReleaseNotes.style.display = 'none';
             updateReleaseNotes.textContent = '';
