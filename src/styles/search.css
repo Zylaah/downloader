@@ -184,8 +184,6 @@
 /* Playlist details list (shown when downloading a full playlist) */
 .playlist-details {
     margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .playlist-details-header {
@@ -200,6 +198,32 @@
     padding: 0;
     max-height: 220px;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gray-light) transparent;
+}
+
+/* Webkit scrollbar styling for playlist list */
+.playlist-items-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.playlist-items-list::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: var(--radius);
+}
+
+.playlist-items-list::-webkit-scrollbar-thumb {
+    background-color: var(--gray-light);
+    border-radius: 4px;
+    border: 2px solid white;
+}
+
+.playlist-items-list::-webkit-scrollbar-thumb:hover {
+    background-color: #c0c0c0;
+}
+
+.playlist-items-list::-webkit-scrollbar-thumb:active {
+    background-color: var(--primary);
 }
 
 .playlist-item {

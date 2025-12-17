@@ -17,6 +17,9 @@ const closeSettingsPopup = document.getElementById('closeSettingsPopup');
 
 const selectedVideoContainer = document.getElementById('selectedVideoContainer');
 const selectedVideoTitle = document.getElementById('selectedVideoTitle');
+const selectedVideoLabel = selectedVideoContainer
+  ? selectedVideoContainer.querySelector('.selected-video-label')
+  : null;
 const playlistOptions = document.getElementById('playlistOptions');
 const playlistSingleBtn = document.getElementById('playlistSingleBtn');
 const playlistFullBtn = document.getElementById('playlistFullBtn');
@@ -285,6 +288,12 @@ function resetUI() {
     // Reset selected video display
     selectedVideoContainer.style.display = 'none';
     selectedVideoTitle.textContent = '';
+    // Restore label/title visibility in case they were hidden for
+    // full-playlist download mode.
+    if (selectedVideoLabel) {
+        selectedVideoLabel.style.display = 'block';
+    }
+    selectedVideoTitle.style.display = 'block';
 
     // Reset playlist details
     if (playlistDetails) {
@@ -376,6 +385,22 @@ downloadButton.addEventListener('click', () => {
     const effectivePlaylistMode = isPlaylistUrl && playlistMode === 'playlist' ? 'playlist' : 'single';
     isActivePlaylistDownload = (effectivePlaylistMode === 'playlist');
     lastPlaylistIndex = null;
+
+    // For full-playlist downloads, visually declutter: only show the
+    // playlist list, hide the "Vidéo sélectionnée" label, the title
+    // and the playlist mode buttons.
+    if (effectivePlaylistMode === 'playlist') {
+        if (playlistDetails) {
+            playlistDetails.style.display = 'block';
+        }
+        if (selectedVideoLabel) {
+            selectedVideoLabel.style.display = 'none';
+        }
+        selectedVideoTitle.style.display = 'none';
+        if (playlistOptions) {
+            playlistOptions.style.display = 'none';
+        }
+    }
 
     // Clear any previous highlighting on playlist items
     if (playlistItemsList && playlistItemsList.children.length) {
