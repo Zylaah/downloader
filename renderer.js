@@ -860,6 +860,8 @@ backButton.addEventListener('click', () => {
     
     // Show search container again
     document.querySelector('.search-container').style.display = 'flex';
+    // Clear the search / URL input
+    searchQuery.value = '';
     
     // Only show search results if there are results to display
     if (searchResults.innerHTML.trim() !== '') {
