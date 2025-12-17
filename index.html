@@ -119,6 +119,21 @@
             <div id="selectedVideoContainer" class="selected-video-container">
                 <div class="selected-video-label">Vidéo sélectionnée :</div>
                 <div id="selectedVideoTitle" class="selected-video-title"></div>
+
+                <!-- Playlist options (shown only when a playlist URL is detected) -->
+                <div id="playlistOptions" class="playlist-options" style="display: none;">
+                    <div class="playlist-label">Cette URL est une playlist. Que voulez-vous télécharger&nbsp;?</div>
+                    <div class="playlist-buttons">
+                        <button id="playlistSingleBtn" class="playlist-option-btn active">Vidéo actuelle seulement</button>
+                        <button id="playlistFullBtn" class="playlist-option-btn">Playlist complète</button>
+                    </div>
+                </div>
+
+                <!-- Full playlist details (shown when "Playlist complète" is selected) -->
+                <div id="playlistDetails" class="playlist-details" style="display: none;">
+                    <div id="playlistDetailsHeader" class="playlist-details-header"></div>
+                    <ul id="playlistItemsList" class="playlist-items-list"></ul>
+                </div>
             </div>
 
             <div id="progressContainer">

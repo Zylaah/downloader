@@ -903,7 +903,7 @@ app.on('before-quit', () => {
   activeDownloadProcesses.clear();
 });
 
-ipcMain.on('download-audio', async (event, url, downloadPath) => {
+ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'single') => {
   if (!url || !url.trim()) {
     event.reply('download-error', 'Please enter a valid URL.');
     return;
@@ -931,6 +931,10 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
   let downloadReportedAsMostlyComplete = false;
   const processId = Date.now() + Math.random(); // Unique ID for this download
   event.sender.downloadProcessId = processId;
+  const isPlaylistDownload = playlistMode === 'playlist';
+  let currentItemIndex = 1;
+  let totalItems = 1;
+  let currentItemTitle = null;
 
   try {
     if (downloadPath && fs.existsSync(downloadPath)) {
@@ -965,9 +969,14 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       '-x',
       '--audio-format', 'mp3',
       '--audio-quality', '0',
-      '-o', outputFilePath,
-      '--progress'
     ];
+
+    // For single-video mode, explicitly avoid playlist behavior
+    if (playlistMode !== 'playlist') {
+      execArgs.push('--no-playlist', '--playlist-items', '1');
+    }
+
+    execArgs.push('-o', outputFilePath, '--progress');
 
     // Ensure we have the latest ffmpeg path
     const currentFfmpegPath = await ensureFfmpegBinary();
@@ -1042,6 +1051,33 @@ ipcMain.on('download-audio', async (event, url, downloadPath) => {
       if (ENABLE_DOWNLOAD_LOGS) {
         console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
       }
+
+      // For playlist downloads, try to detect the current item and its title
+      if (!isPlaylistDownload || typeof eventData !== 'string') {
+        return;
+      }
+
+      // Update current/total item indices from "Downloading item X of Y" lines
+      const itemMatch = eventData.match(/Downloading item\s+(\d+)\s+of\s+(\d+)/i);
+      if (itemMatch) {
+        currentItemIndex = parseInt(itemMatch[1], 10) || currentItemIndex;
+        totalItems = parseInt(itemMatch[2], 10) || totalItems;
+      }
+
+      // Extract the file name from "Destination: ..." lines to infer the title
+      const destMatch = eventData.match(/Destination:\s*(.+)$/i);
+      if (destMatch) {
+        const fullPath = destMatch[1].trim();
+        const baseName = path.basename(fullPath);
+        // Strip the extension to get a clean title
+        currentItemTitle = baseName.replace(/\.[^/.]+$/, '');
+
+        event.reply('playlist-item-update', {
+          index: currentItemIndex,
+          total: totalItems,
+          title: currentItemTitle
+        });
+      }
     })
     .on('error', (error) => {
       console.error('Error during download:', error);
@@ -1114,58 +1150,77 @@ ipcMain.handle('get-video-info', async (event, url) => {
       return { error: 'Please provide a valid URL.' };
     }
 
-  // Wait for any cleanup to complete before starting new operation
-  await waitForCleanup();
+    // Wait for any cleanup to complete before starting new operation
+    await waitForCleanup();
 
-  // Ensure we have a valid yt-dlp binary before proceeding
-  const binaryPath = await ensureYtDlpBinary();
-  if (!binaryPath) {
-    return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
-  }
+    // Ensure we have a valid yt-dlp binary before proceeding
+    const binaryPath = await ensureYtDlpBinary();
+    if (!binaryPath) {
+      return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
+    }
 
-  console.log(`Getting video info for: ${url}`);
-  
-  return new Promise((resolve) => {
-    const processId = Date.now() + Math.random(); // Unique ID for this process
-    let isResolved = false;
+    console.log(`Getting video info for: ${url}`);
     
-    // Get a fresh ytDlpWrap instance if needed
-    const ytDlp = getYtDlpWrap(binaryPath);
-    
-    // Use execPromise for reliable output capture
-    const promise = ytDlp.execPromise([
-        url.trim(),
-        '--print', '%(title)s',
-        '--no-download',
-        '--encoding', 'utf-8'
-      ])
-      .then(output => {
+    return new Promise((resolve) => {
+      const processId = Date.now() + Math.random(); // Unique ID for this process
+      let isResolved = false;
+
+      // Configure a timeout so we don't hang forever on problematic URLs
+      const timeoutMs = 15000; // 15 seconds
+      const timeoutId = setTimeout(() => {
         if (!isResolved) {
           isResolved = true;
           activeVideoInfoProcesses.delete(processId);
-          const title = output.trim();
-          console.log('Video title retrieved:', title);
-          resolve({ title: title });
-        }
-      })
-      .catch(error => {
-        if (!isResolved) {
-          isResolved = true;
-          activeVideoInfoProcesses.delete(processId);
-          console.error('[Main Process] Error getting video info:', error);
-          resolve({ 
-            error: `Failed to get video info: ${error.message || 'Unknown error'}`,
-            stack: error.stack
+          console.warn('[Main Process] Video info request timed out');
+          resolve({
+            error: 'La récupération des informations de la vidéo est trop longue ou a échoué.',
+            timeout: true
           });
         }
-      });
+      }, timeoutMs);
       
+      // Get a fresh ytDlpWrap instance if needed
+      const ytDlp = getYtDlpWrap(binaryPath);
+      
+      // Use execPromise for reliable output capture
+      const promise = ytDlp.execPromise([
+          url.trim(),
+          '--print', '%(title)s',
+          '--no-download',
+          '--no-playlist',      // Avoid processing entire playlists/radios
+          '--playlist-items', '1', // If treated as playlist, only take first item
+          '--encoding', 'utf-8'
+        ])
+        .then(output => {
+          if (!isResolved) {
+            isResolved = true;
+            clearTimeout(timeoutId);
+            activeVideoInfoProcesses.delete(processId);
+            const title = output.trim();
+            console.log('Video title retrieved:', title);
+            resolve({ title: title });
+          }
+        })
+        .catch(error => {
+          if (!isResolved) {
+            isResolved = true;
+            clearTimeout(timeoutId);
+            activeVideoInfoProcesses.delete(processId);
+            console.error('[Main Process] Error getting video info:', error);
+            resolve({ 
+              error: `Failed to get video info: ${error.message || 'Unknown error'}`,
+              stack: error.stack
+            });
+          }
+        });
+        
       // Store the promise and resolve function for cancellation
       activeVideoInfoProcesses.set(processId, {
         promise: promise,
         resolve: () => {
           if (!isResolved) {
             isResolved = true;
+            clearTimeout(timeoutId);
             activeVideoInfoProcesses.delete(processId);
             resolve({ cancelled: true });
           }
@@ -1207,7 +1262,82 @@ ipcMain.handle('cancel-video-info', async (event) => {
   }
 });
 
-ipcMain.on('download-media', async (event, url, downloadPath, format) => {
+ipcMain.handle('get-playlist-info', async (event, url) => {
+  try {
+    if (!url || !url.trim()) {
+      return { error: 'Please provide a valid URL.' };
+    }
+
+    // Wait for any cleanup to complete before starting new operation
+    await waitForCleanup();
+
+    // Ensure we have a valid yt-dlp binary before proceeding
+    const binaryPath = await ensureYtDlpBinary();
+    if (!binaryPath) {
+      return { error: 'Unable to find or download yt-dlp binary. Please ensure yt-dlp is installed on your system.' };
+    }
+
+    console.log(`Getting playlist info for: ${url}`);
+
+    const ytDlp = getYtDlpWrap(binaryPath);
+    const output = await ytDlp.execPromise([
+      url.trim(),
+      '--flat-playlist',
+      '--dump-single-json',
+      '--no-download',
+      '--quiet',
+      '--no-warnings',
+      '--encoding', 'utf-8'
+    ]);
+
+    let playlistJson;
+    try {
+      playlistJson = JSON.parse(output);
+    } catch (parseError) {
+      console.error('[Main Process] Failed to parse playlist JSON:', parseError);
+      console.error('[Main Process] Raw yt-dlp output (truncated):', String(output).slice(0, 500));
+      return {
+        error: 'Impossible de lire les informations de la playlist (JSON invalide renvoyé par yt-dlp).'
+      };
+    }
+
+    const items = [];
+
+    if (playlistJson && Array.isArray(playlistJson.entries)) {
+      playlistJson.entries.forEach(entry => {
+        if (!entry) return;
+
+        const title = entry.title || 'Sans titre';
+        let itemUrl = entry.url || entry.webpage_url || '';
+
+        // If url looks like just an ID, convert it to a full watch URL
+        if ((!itemUrl || !itemUrl.includes('://')) && (entry.id || entry.url)) {
+          const idCandidate = entry.id || entry.url;
+          if (typeof idCandidate === 'string' && idCandidate.length === 11 && !idCandidate.includes('://')) {
+            itemUrl = `https://www.youtube.com/watch?v=${idCandidate}`;
+          } else if (typeof idCandidate === 'string') {
+            itemUrl = idCandidate;
+          }
+        }
+
+        items.push({
+          title,
+          url: itemUrl || ''
+        });
+      });
+    }
+
+    return { items };
+  } catch (error) {
+    console.error('[Main Process] Error getting playlist info:', error);
+    return {
+      error: `Failed to get playlist info: ${error.message || 'Unknown error'}`,
+      stack: error.stack
+    };
+  }
+});
+
+ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMode = 'single') => {
   if (!url || !url.trim()) {
     event.reply('download-error', 'Please enter a valid URL.');
     return;
@@ -1235,6 +1365,10 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
   let downloadReportedAsMostlyComplete = false;
   const processId = Date.now() + Math.random(); // Unique ID for this download
   event.sender.downloadProcessId = processId;
+  const isPlaylistDownload = playlistMode === 'playlist';
+  let currentItemIndex = 1;
+  let totalItems = 1;
+  let currentItemTitle = null;
 
   try {
     if (downloadPath && fs.existsSync(downloadPath)) {
@@ -1275,18 +1409,21 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
         '-x',
         '--audio-format', 'mp3',
         '--audio-quality', '0',
-        '-o', outputFilePath,
-        '--progress'
       ];
     } else {
       execArgs = [
         url,
         '-f', 'bestvideo[fps<=60]+bestaudio/bestvideo+bestaudio/best',
         '--merge-output-format', 'mp4',
-        '-o', outputFilePath,
-        '--progress'
       ];
     }
+
+    // For single-video mode, explicitly avoid playlist behavior
+    if (playlistMode !== 'playlist') {
+      execArgs.push('--no-playlist', '--playlist-items', '1');
+    }
+
+    execArgs.push('-o', outputFilePath, '--progress');
 
     // Ensure we have the latest ffmpeg path
     const currentFfmpegPath = await ensureFfmpegBinary();
@@ -1360,6 +1497,33 @@ ipcMain.on('download-media', async (event, url, downloadPath, format) => {
     .on('ytDlpEvent', (eventType, eventData) => {
       if (ENABLE_DOWNLOAD_LOGS) {
         console.log(`[ytDlpEvent] ${eventType}: ${eventData}`);
+      }
+
+      // For playlist downloads, try to detect the current item and its title
+      if (!isPlaylistDownload || typeof eventData !== 'string') {
+        return;
+      }
+
+      // Update current/total item indices from "Downloading item X of Y" lines
+      const itemMatch = eventData.match(/Downloading item\s+(\d+)\s+of\s+(\d+)/i);
+      if (itemMatch) {
+        currentItemIndex = parseInt(itemMatch[1], 10) || currentItemIndex;
+        totalItems = parseInt(itemMatch[2], 10) || totalItems;
+      }
+
+      // Extract the file name from "Destination: ..." lines to infer the title
+      const destMatch = eventData.match(/Destination:\s*(.+)$/i);
+      if (destMatch) {
+        const fullPath = destMatch[1].trim();
+        const baseName = path.basename(fullPath);
+        // Strip the extension to get a clean title
+        currentItemTitle = baseName.replace(/\.[^/.]+$/, '');
+
+        event.reply('playlist-item-update', {
+          index: currentItemIndex,
+          total: totalItems,
+          title: currentItemTitle
+        });
       }
     })
     .on('error', (error) => {

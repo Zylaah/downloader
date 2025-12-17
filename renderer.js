@@ -17,6 +17,12 @@ const closeSettingsPopup = document.getElementById('closeSettingsPopup');
 
 const selectedVideoContainer = document.getElementById('selectedVideoContainer');
 const selectedVideoTitle = document.getElementById('selectedVideoTitle');
+const playlistOptions = document.getElementById('playlistOptions');
+const playlistSingleBtn = document.getElementById('playlistSingleBtn');
+const playlistFullBtn = document.getElementById('playlistFullBtn');
+const playlistDetails = document.getElementById('playlistDetails');
+const playlistItemsList = document.getElementById('playlistItemsList');
+const playlistDetailsHeader = document.getElementById('playlistDetailsHeader');
 const backButton = document.getElementById('backButton');
 const formatSelect = document.getElementById('formatSelect');
 const pasteClipboardButton = document.getElementById('pasteClipboardButton');
@@ -46,9 +52,15 @@ const closeBtn = document.getElementById('closeBtn');
 let currentDownloadPath = '';
 let messageTimeout = null; // To store the timeout ID for the message area
 let selectedVideoUrl = ''; // Store the selected video URL
+let originalVideoUrl = ''; // Store the original URL (useful for playlists)
+let isPlaylistUrl = false; // Track if current selection is a playlist URL
+let playlistMode = 'single'; // 'single' | 'playlist'
 const DOWNLOAD_PROGRESS_SCALE = 0.85; // Download part takes up 85% of the bar
 let conversionSimulationActive = false;
 let videoInfoController = null; // To control video info fetching
+let currentPlaylistItems = [];
+let isActivePlaylistDownload = false;
+let lastPlaylistIndex = null;
 
 // Window controls event listeners
 if (minimizeBtn) {
@@ -247,6 +259,7 @@ function resetListeners() {
     window.electronAPI.removeAllListeners('download-complete');
     window.electronAPI.removeAllListeners('download-error');
     window.electronAPI.removeAllListeners('download-cancelled');
+    window.electronAPI.removeAllListeners('playlist-item-update');
 }
 
 function resetUI() {
@@ -272,12 +285,30 @@ function resetUI() {
     // Reset selected video display
     selectedVideoContainer.style.display = 'none';
     selectedVideoTitle.textContent = '';
+
+    // Reset playlist details
+    if (playlistDetails) {
+        playlistDetails.style.display = 'none';
+    }
+    if (playlistItemsList) {
+        playlistItemsList.innerHTML = '';
+    }
+    if (playlistDetailsHeader) {
+        playlistDetailsHeader.textContent = '';
+    }
+    currentPlaylistItems = [];
+    isActivePlaylistDownload = false;
+    lastPlaylistIndex = null;
     
     // Hide back button
     backButton.style.display = 'none';
     
-    // Reset selected video URL
+    // Reset selected video / playlist state
     selectedVideoUrl = '';
+    originalVideoUrl = '';
+    isPlaylistUrl = false;
+    playlistMode = 'single';
+    updatePlaylistUI();
     
     // Hide download button (should only appear after video info is retrieved)
     downloadButton.disabled = false;
@@ -342,7 +373,18 @@ downloadButton.addEventListener('click', () => {
     displayUserMessage('', null);
 
     const selectedFormat = formatSelect.value;
-    window.electronAPI.downloadMedia(selectedVideoUrl, currentDownloadPath, selectedFormat);
+    const effectivePlaylistMode = isPlaylistUrl && playlistMode === 'playlist' ? 'playlist' : 'single';
+    isActivePlaylistDownload = (effectivePlaylistMode === 'playlist');
+    lastPlaylistIndex = null;
+
+    // Clear any previous highlighting on playlist items
+    if (playlistItemsList && playlistItemsList.children.length) {
+        Array.from(playlistItemsList.children).forEach(li => {
+            li.classList.remove('current', 'completed');
+        });
+    }
+
+    window.electronAPI.downloadMedia(selectedVideoUrl, currentDownloadPath, selectedFormat, effectivePlaylistMode);
 
     window.electronAPI.onDownloadProgress((progressData) => {
         console.log('[Renderer] Received download-progress event with data:', JSON.stringify(progressData)); 
@@ -401,6 +443,37 @@ downloadButton.addEventListener('click', () => {
         simulateConversionProgress(DOWNLOAD_PROGRESS_SCALE * 100, 100, 3000); 
     });
 
+    window.electronAPI.onPlaylistItemUpdate((info) => {
+        if (!info || !isActivePlaylistDownload) {
+            return;
+        }
+
+        const { index, total, title } = info;
+        if (typeof index === 'number') {
+            lastPlaylistIndex = index;
+        }
+
+        // Highlight current and completed items in the playlist list
+        if (playlistItemsList && playlistItemsList.children.length) {
+            const children = Array.from(playlistItemsList.children);
+            const safeIndex = Math.min(children.length, Math.max(1, index || 1)) - 1;
+
+            children.forEach((li, liIndex) => {
+                li.classList.remove('current');
+                if (typeof index === 'number' && liIndex < safeIndex) {
+                    li.classList.add('completed');
+                } else {
+                    li.classList.remove('completed');
+                }
+            });
+
+            const currentLi = children[safeIndex];
+            if (currentLi) {
+                currentLi.classList.add('current');
+            }
+        }
+    });
+
     window.electronAPI.onDownloadComplete((message) => {
         if (window.conversionSimulationInterval) {
             clearInterval(window.conversionSimulationInterval);
@@ -412,6 +485,8 @@ downloadButton.addEventListener('click', () => {
         selectedVideoContainer.style.display = 'none';
         completionNotification.style.display = 'block';
         displayUserMessage('Téléchargement terminé avec succès !', 'complete');
+        isActivePlaylistDownload = false;
+        lastPlaylistIndex = null;
         resetListeners();
     });
 
@@ -424,6 +499,8 @@ downloadButton.addEventListener('click', () => {
         if (window.conversionSimulationInterval) {
             clearInterval(window.conversionSimulationInterval);
         }
+        isActivePlaylistDownload = false;
+        lastPlaylistIndex = null;
         resetListeners();
     });
 
@@ -480,11 +557,90 @@ pasteClipboardButton.addEventListener('click', async () => {
     }
 });
 
-// Function to search for YouTube videos
 // Function to check if a string is a YouTube URL
 function isYouTubeUrl(str) {
     const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)[a-zA-Z0-9_-]{11}/;
     return youtubeRegex.test(str);
+}
+
+// Function to detect if a YouTube URL refers to a playlist/mix/radio
+function isYouTubePlaylistUrl(str) {
+    try {
+        const parsed = new URL(str);
+        if (parsed.searchParams.has('list')) return true;
+        if (parsed.pathname.includes('/playlist')) return true;
+        return false;
+    } catch (e) {
+        return false;
+    }
+}
+
+// Normalize a YouTube URL to a canonical single-video link
+// This strips playlist/radio parameters so we always download just that video.
+function normalizeYouTubeUrl(url) {
+    try {
+        const parsed = new URL(url);
+        let videoId = null;
+
+        // youtu.be short links
+        if (parsed.hostname.includes('youtu.be')) {
+            const parts = parsed.pathname.split('/').filter(Boolean);
+            if (parts.length > 0) {
+                videoId = parts[0];
+            }
+        }
+
+        // Standard watch URLs with ?v=
+        if (!videoId && parsed.searchParams.has('v')) {
+            videoId = parsed.searchParams.get('v');
+        }
+
+        // Embed or /v/ URLs
+        if (!videoId && (parsed.pathname.includes('/embed/') || parsed.pathname.includes('/v/'))) {
+            const segments = parsed.pathname.split('/').filter(Boolean);
+            const idx = segments.findIndex(seg => seg === 'embed' || seg === 'v');
+            if (idx !== -1 && segments[idx + 1]) {
+                videoId = segments[idx + 1];
+            }
+        }
+
+        // Fallback: try to match a video ID pattern in the whole string
+        if (!videoId) {
+            const match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+            if (match && match[1]) {
+                videoId = match[1];
+            }
+        }
+
+        if (!videoId || videoId.length !== 11) {
+            return url; // Return original if we can't confidently extract an ID
+        }
+
+        return `https://www.youtube.com/watch?v=${videoId}`;
+    } catch (e) {
+        // If URL parsing fails, just return the original string
+        return url;
+    }
+}
+
+// Update playlist UI state
+function updatePlaylistUI() {
+    if (!playlistOptions || !playlistSingleBtn || !playlistFullBtn) return;
+
+    if (isPlaylistUrl) {
+        playlistOptions.style.display = 'block';
+        if (playlistMode === 'playlist') {
+            playlistFullBtn.classList.add('active');
+            playlistSingleBtn.classList.remove('active');
+        } else {
+            playlistSingleBtn.classList.add('active');
+            playlistFullBtn.classList.remove('active');
+        }
+    } else {
+        playlistOptions.style.display = 'none';
+        playlistSingleBtn.classList.add('active');
+        playlistFullBtn.classList.remove('active');
+    }
 }
 
 async function performSearch() {
@@ -497,7 +653,10 @@ async function performSearch() {
     // Check if the input is a YouTube URL
     if (isYouTubeUrl(query)) {
         // Handle direct URL input
-        selectedVideoUrl = query;
+        originalVideoUrl = query;
+        isPlaylistUrl = isYouTubePlaylistUrl(query);
+        playlistMode = 'single'; // Default to single video
+        selectedVideoUrl = normalizeYouTubeUrl(query);
         
         // Show loading state while fetching video info
         selectedVideoTitle.textContent = 'Récupération des informations de la vidéo...';
@@ -518,8 +677,8 @@ async function performSearch() {
             // Mark that we have an active video info request
             videoInfoController = true;
             
-            // Fetch video info to get the title
-            const videoInfo = await window.electronAPI.getVideoInfo(query);
+            // Fetch video info to get the title, using normalized URL
+            const videoInfo = await window.electronAPI.getVideoInfo(selectedVideoUrl);
             
             // Check if request was cancelled
             if (!videoInfoController) {
@@ -536,6 +695,9 @@ async function performSearch() {
                 selectedVideoTitle.textContent = 'Vidéo sélectionnée depuis le lien';
             }
             
+            // Only show playlist/single options after we have attempted to retrieve video info
+            updatePlaylistUI();
+            
             // Show download button only after successful video info retrieval
             downloadButton.style.display = 'inline-block';
             downloadButton.focus();
@@ -549,6 +711,8 @@ async function performSearch() {
             
             // Show download button even if title fetch failed
             downloadButton.style.display = 'inline-block';
+            // Still update playlist options once we've attempted to retrieve info
+            updatePlaylistUI();
         } finally {
             // Clear the controller
             videoInfoController = null;
@@ -596,6 +760,7 @@ function displaySearchResults(results) {
     searchResults.innerHTML = '';
     
     results.forEach(video => {
+        const normalizedUrl = normalizeYouTubeUrl(video.url || '');
         const resultItem = document.createElement('div');
         resultItem.className = 'search-result-item';
         
@@ -608,7 +773,11 @@ function displaySearchResults(results) {
         
         // Add click event to select this video
         resultItem.addEventListener('click', () => {
-            selectedVideoUrl = video.url;
+            originalVideoUrl = video.url || '';
+            isPlaylistUrl = isYouTubePlaylistUrl(originalVideoUrl);
+            playlistMode = 'single'; // Default to single video on new selection
+            selectedVideoUrl = normalizedUrl || video.url;
+            updatePlaylistUI();
             
             // Display selected video title
             selectedVideoTitle.textContent = video.title;
@@ -660,6 +829,22 @@ backButton.addEventListener('click', () => {
     
     // Hide selected video container
     selectedVideoContainer.style.display = 'none';
+    if (playlistDetails) {
+        playlistDetails.style.display = 'none';
+    }
+    if (playlistItemsList) {
+        playlistItemsList.innerHTML = '';
+    }
+    if (playlistDetailsHeader) {
+        playlistDetailsHeader.textContent = '';
+    }
+    currentPlaylistItems = [];
+    isActivePlaylistDownload = false;
+    lastPlaylistIndex = null;
+    originalVideoUrl = '';
+    isPlaylistUrl = false;
+    playlistMode = 'single';
+    updatePlaylistUI();
     
     // Hide back button
     backButton.style.display = 'none';
@@ -799,6 +984,74 @@ cancelDownloadBtn.addEventListener('click', async () => {
         displayUserMessage('Erreur lors de l\'annulation', 'error');
     }
 });
+
+// Playlist option buttons handlers
+if (playlistSingleBtn && playlistFullBtn) {
+    playlistSingleBtn.addEventListener('click', () => {
+        if (!isPlaylistUrl) return;
+        playlistMode = 'single';
+        selectedVideoUrl = normalizeYouTubeUrl(originalVideoUrl || selectedVideoUrl);
+        updatePlaylistUI();
+        if (playlistDetails) {
+            playlistDetails.style.display = 'none';
+        }
+        if (playlistItemsList) {
+            playlistItemsList.innerHTML = '';
+        }
+        if (playlistDetailsHeader) {
+            playlistDetailsHeader.textContent = '';
+        }
+        currentPlaylistItems = [];
+        isActivePlaylistDownload = false;
+        lastPlaylistIndex = null;
+    });
+    
+    playlistFullBtn.addEventListener('click', async () => {
+        if (!isPlaylistUrl) return;
+        playlistMode = 'playlist';
+        if (originalVideoUrl) {
+            selectedVideoUrl = originalVideoUrl;
+        }
+        updatePlaylistUI();
+
+        if (!playlistDetails || !playlistItemsList || !playlistDetailsHeader) {
+            return;
+        }
+
+        playlistDetails.style.display = 'block';
+        playlistDetailsHeader.textContent = 'Chargement de la playlist...';
+        playlistItemsList.innerHTML = '';
+        currentPlaylistItems = [];
+
+        try {
+            const info = await window.electronAPI.getPlaylistInfo(originalVideoUrl || selectedVideoUrl);
+            if (info && Array.isArray(info.items) && info.items.length > 0) {
+                currentPlaylistItems = info.items;
+                playlistDetailsHeader.textContent = `Playlist complète (${info.items.length} vidéos)`;
+                playlistItemsList.innerHTML = '';
+
+                info.items.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'playlist-item';
+                    li.textContent = `${index + 1}. ${item.title || 'Vidéo sans titre'}`;
+                    playlistItemsList.appendChild(li);
+                });
+            } else if (info && info.error) {
+                playlistDetailsHeader.textContent = 'Impossible de récupérer la playlist';
+                playlistItemsList.innerHTML = '';
+                displayUserMessage(info.error, 'error');
+            } else {
+                playlistDetailsHeader.textContent = 'Aucun élément dans cette playlist';
+                playlistItemsList.innerHTML = '';
+            }
+        } catch (error) {
+            console.error('Error fetching playlist info:', error);
+            playlistDetailsHeader.textContent = 'Erreur lors de la récupération de la playlist';
+            playlistItemsList.innerHTML = '';
+            displayUserMessage('Erreur lors de la récupération de la playlist', 'error');
+        }
+    });
+}
 
 // Initialize the default path when the script loads
 initializePath();
