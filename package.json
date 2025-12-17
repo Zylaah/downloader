@@ -9,6 +9,7 @@
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
     "build:all": "electron-builder --win --linux",
+    "release:win": "electron-builder --win --publish onTag",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -28,6 +29,7 @@
     "adm-zip": "^0.5.10",
     "electron-store": "^8.2.0",
     "glob": "^10.5.0",
+    "electron-updater": "^6.6.2",
     "yt-dlp-wrap": "^2.3.12"
   },
   "build": {
@@ -79,6 +81,13 @@
         "--share=network",
         "--talk-name=org.freedesktop.Notifications"
       ]
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Zylaah",
+        "repo": "downloader"
+      }
+    ]
   }
 }

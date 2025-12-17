@@ -25,5 +25,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximizeRestoreWindow: () => ipcRenderer.send('maximize-restore-window'),
   closeWindow: () => ipcRenderer.send('close-window'),
   onWindowMaximized: (callback) => ipcRenderer.on('window-maximized', callback),
-  onWindowUnmaximized: (callback) => ipcRenderer.on('window-unmaximized', callback)
+  onWindowUnmaximized: (callback) => ipcRenderer.on('window-unmaximized', callback),
+
+  // Auto-update APIs
+  checkForUpdates: () => ipcRenderer.invoke('update-check-now'),
+  startUpdateDownload: () => ipcRenderer.invoke('update-start-download'),
+  skipUpdateVersion: (version) => ipcRenderer.invoke('update-skip-version', version),
+  installUpdateNow: () => ipcRenderer.invoke('update-install-now'),
+  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', (_event, info) => callback(info)),
+  onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', (_event, info) => callback(info)),
+  onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress)),
+  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', (_event, info) => callback(info)),
+  onUpdateError: (callback) => ipcRenderer.on('update-error', (_event, info) => callback(info))
 });

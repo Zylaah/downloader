@@ -3,6 +3,7 @@ const Store = require('electron-store');
 const os = require('os');
 const https = require('https');
 const { execSync, spawn } = require('child_process');
+const { autoUpdater } = require('electron-updater');
 
 const store = new Store();
 const path = require('path');
@@ -11,6 +12,120 @@ const YTDlpWrap = require('yt-dlp-wrap').default;
 
 // Toggle verbose download logging (progress, yt-dlp events, etc.)
 const ENABLE_DOWNLOAD_LOGS = false;
+
+// Auto-update state
+let autoUpdaterInitialized = false;
+let updateCheckTriggered = false;
+
+function setupAutoUpdater(mainWindow) {
+  if (autoUpdaterInitialized) {
+    return;
+  }
+
+  if (!app.isPackaged) {
+    console.log('[AutoUpdate] Skipping auto-updater in development mode.');
+    return;
+  }
+
+  autoUpdaterInitialized = true;
+
+  try {
+    autoUpdater.autoDownload = false; // Only download when user accepts
+  } catch (error) {
+    console.error('[AutoUpdate] Failed to configure auto-updater:', error);
+  }
+
+  const sendToRendererSafe = (channel, payload) => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+    mainWindow.webContents.send(channel, payload);
+  };
+
+  autoUpdater.on('update-available', (info) => {
+    const skippedVersion = store.get('skippedUpdateVersion');
+    if (skippedVersion && info && info.version === skippedVersion) {
+      console.log(`[AutoUpdate] Update ${info.version} was previously skipped; ignoring.`);
+      return;
+    }
+
+    console.log('[AutoUpdate] Update available:', info.version);
+    sendToRendererSafe('update-available', {
+      version: info.version,
+      releaseNotes: info.releaseNotes || '',
+      currentVersion: app.getVersion()
+    });
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[AutoUpdate] No update available.');
+    sendToRendererSafe('update-not-available', {
+      currentVersion: app.getVersion()
+    });
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    sendToRendererSafe('update-download-progress', progress);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[AutoUpdate] Update downloaded:', info.version);
+    sendToRendererSafe('update-downloaded', {
+      version: info.version,
+      releaseNotes: info.releaseNotes || ''
+    });
+  });
+
+  autoUpdater.on('error', (error) => {
+    console.error('[AutoUpdate] Error:', error);
+    sendToRendererSafe('update-error', {
+      message: error && error.message ? error.message : String(error || 'Unknown error')
+    });
+  });
+
+  ipcMain.handle('update-check-now', async () => {
+    if (!app.isPackaged) {
+      console.log('[AutoUpdate] Ignoring update check; app is not packaged.');
+      return { started: false, reason: 'not-packaged' };
+    }
+    if (updateCheckTriggered) {
+      return { started: false, reason: 'already-started' };
+    }
+
+    updateCheckTriggered = true;
+    try {
+      await autoUpdater.checkForUpdates();
+      return { started: true };
+    } catch (error) {
+      console.error('[AutoUpdate] Failed to check for updates:', error);
+      return { started: false, reason: 'error', message: error.message || String(error) };
+    }
+  });
+
+  ipcMain.handle('update-start-download', async () => {
+    try {
+      await autoUpdater.downloadUpdate();
+      return { started: true };
+    } catch (error) {
+      console.error('[AutoUpdate] Failed to start update download:', error);
+      return { started: false, message: error.message || String(error) };
+    }
+  });
+
+  ipcMain.handle('update-skip-version', (_event, version) => {
+    if (version) {
+      store.set('skippedUpdateVersion', version);
+      console.log('[AutoUpdate] User chose to skip version', version);
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('update-install-now', () => {
+    console.log('[AutoUpdate] Installing update and quitting...');
+    autoUpdater.quitAndInstall();
+    return { success: true };
+  });
+}
 
 // Function to download yt-dlp FFmpeg binary if not found
 async function ensureFfmpegBinary() {
@@ -785,6 +900,9 @@ function createWindow () {
   });
 
   mainWindow.loadFile('index.html');
+
+  // Initialize auto-updater and wire events to this window
+  setupAutoUpdater(mainWindow);
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools();

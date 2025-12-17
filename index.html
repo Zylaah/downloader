@@ -87,7 +87,47 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- Application update popup -->
+    <div id="updatePopup" class="popup-overlay">
+        <div class="popup-container">
+            <div class="popup-title">Mise à jour disponible</div>
+            <div class="popup-close" id="closeUpdatePopup">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#555"/>
+                </svg>
+            </div>
+            <div class="update-content">
+                <p class="update-message" id="updateMessage">
+                    Une nouvelle version de MyTube est disponible.
+                </p>
+                <div class="update-details" id="updateDetails">
+                    <div class="update-version-row">
+                        <span class="update-label">Version actuelle :</span>
+                        <span class="update-value" id="currentVersionLabel">-</span>
+                    </div>
+                    <div class="update-version-row">
+                        <span class="update-label">Nouvelle version :</span>
+                        <span class="update-value" id="newVersionLabel">-</span>
+                    </div>
+                </div>
+                <div class="update-release-notes" id="updateReleaseNotes" style="display: none;"></div>
+                <div class="update-actions" id="updateInitialActions">
+                    <button id="updateInstallBtn" class="btn-primary">Télécharger et installer</button>
+                    <button id="updateRemindLaterBtn" class="btn-secondary">Plus tard</button>
+                    <button id="updateSkipBtn" class="btn-text">Ignorer cette version</button>
+                </div>
+                <div class="update-progress" id="updateProgressSection" style="display: none;">
+                    <div class="update-progress-text" id="updateProgressText">Préparation du téléchargement de la mise à jour...</div>
+                </div>
+                <div class="update-actions" id="updateReadyActions" style="display: none;">
+                    <button id="updateRestartNowBtn" class="btn-primary">Redémarrer maintenant</button>
+                    <button id="updateRestartLaterBtn" class="btn-secondary">Plus tard</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="app-content-wrapper">
         <div class="app-container">
             <div class="settings-button" id="settingsButton" title="Paramètres">

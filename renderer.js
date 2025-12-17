@@ -42,6 +42,23 @@ const binaryDownloadProgressText = document.getElementById('binaryDownloadProgre
 const ytDlpBinaryItem = document.getElementById('ytDlpBinaryItem');
 const ffmpegBinaryItem = document.getElementById('ffmpegBinaryItem');
 
+// App update popup elements
+const updatePopup = document.getElementById('updatePopup');
+const closeUpdatePopup = document.getElementById('closeUpdatePopup');
+const updateMessage = document.getElementById('updateMessage');
+const currentVersionLabel = document.getElementById('currentVersionLabel');
+const newVersionLabel = document.getElementById('newVersionLabel');
+const updateReleaseNotes = document.getElementById('updateReleaseNotes');
+const updateInitialActions = document.getElementById('updateInitialActions');
+const updateProgressSection = document.getElementById('updateProgressSection');
+const updateProgressText = document.getElementById('updateProgressText');
+const updateReadyActions = document.getElementById('updateReadyActions');
+const updateInstallBtn = document.getElementById('updateInstallBtn');
+const updateRemindLaterBtn = document.getElementById('updateRemindLaterBtn');
+const updateSkipBtn = document.getElementById('updateSkipBtn');
+const updateRestartNowBtn = document.getElementById('updateRestartNowBtn');
+const updateRestartLaterBtn = document.getElementById('updateRestartLaterBtn');
+
 // Cancel download button
 const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
 
@@ -64,6 +81,8 @@ let videoInfoController = null; // To control video info fetching
 let currentPlaylistItems = [];
 let isActivePlaylistDownload = false;
 let lastPlaylistIndex = null;
+let latestAvailableUpdateVersion = null;
+let hasInitializedAutoUpdateUI = false;
 
 // Window controls event listeners
 if (minimizeBtn) {
@@ -982,6 +1001,215 @@ async function checkAndShowBinaryPopup() {
   }
 }
 
+// Handle application auto-updates with custom UI
+function initAutoUpdateHandling() {
+    if (!window.electronAPI || !window.electronAPI.checkForUpdates) {
+        return;
+    }
+
+    if (hasInitializedAutoUpdateUI) {
+        return;
+    }
+    hasInitializedAutoUpdateUI = true;
+
+    const openUpdatePopup = () => {
+        if (!updatePopup) return;
+        updatePopup.style.display = 'flex';
+    };
+
+    const closeUpdatePopupInternal = () => {
+        if (!updatePopup) return;
+        updatePopup.style.display = 'none';
+        if (updateProgressSection) {
+            updateProgressSection.style.display = 'none';
+        }
+        if (updateInitialActions) {
+            updateInitialActions.style.display = 'flex';
+        }
+        if (updateReadyActions) {
+            updateReadyActions.style.display = 'none';
+        }
+    };
+
+    if (closeUpdatePopup) {
+        closeUpdatePopup.addEventListener('click', () => {
+            closeUpdatePopupInternal();
+        });
+    }
+
+    if (updateRemindLaterBtn) {
+        updateRemindLaterBtn.addEventListener('click', () => {
+            closeUpdatePopupInternal();
+        });
+    }
+
+    if (updateSkipBtn) {
+        updateSkipBtn.addEventListener('click', async () => {
+            try {
+                if (latestAvailableUpdateVersion) {
+                    await window.electronAPI.skipUpdateVersion(latestAvailableUpdateVersion);
+                }
+            } catch (error) {
+                console.error('Failed to skip update version:', error);
+            }
+            closeUpdatePopupInternal();
+        });
+    }
+
+    if (updateInstallBtn) {
+        updateInstallBtn.addEventListener('click', async () => {
+            if (updateInitialActions) {
+                updateInitialActions.style.display = 'none';
+            }
+            if (updateProgressSection) {
+                updateProgressSection.style.display = 'block';
+            }
+            if (updateReadyActions) {
+                updateReadyActions.style.display = 'none';
+            }
+            if (updateProgressText) {
+                updateProgressText.textContent = 'Préparation du téléchargement de la mise à jour...';
+            }
+
+            try {
+                await window.electronAPI.startUpdateDownload();
+            } catch (error) {
+                console.error('Failed to start update download:', error);
+                displayUserMessage('Erreur lors du démarrage du téléchargement de la mise à jour', 'error');
+                closeUpdatePopupInternal();
+            }
+        });
+    }
+
+    if (updateRestartNowBtn) {
+        updateRestartNowBtn.addEventListener('click', async () => {
+            try {
+                await window.electronAPI.installUpdateNow();
+            } catch (error) {
+                console.error('Failed to install update:', error);
+                displayUserMessage('Erreur lors de l’installation de la mise à jour', 'error');
+            }
+        });
+    }
+
+    if (updateRestartLaterBtn) {
+        updateRestartLaterBtn.addEventListener('click', () => {
+            closeUpdatePopupInternal();
+        });
+    }
+
+    window.electronAPI.onUpdateAvailable((info) => {
+        if (!info || !updatePopup) return;
+
+        latestAvailableUpdateVersion = info.version || null;
+
+        if (currentVersionLabel) {
+            currentVersionLabel.textContent = info.currentVersion || '-';
+        }
+        if (newVersionLabel) {
+            newVersionLabel.textContent = info.version || '-';
+        }
+
+        if (info.releaseNotes && typeof info.releaseNotes === 'string' && updateReleaseNotes) {
+            const notes = info.releaseNotes.length > 1500
+                ? info.releaseNotes.slice(0, 1500) + '…'
+                : info.releaseNotes;
+            updateReleaseNotes.style.display = 'block';
+            updateReleaseNotes.textContent = notes;
+        } else if (updateReleaseNotes) {
+            updateReleaseNotes.style.display = 'none';
+            updateReleaseNotes.textContent = '';
+        }
+
+        if (updateMessage) {
+            updateMessage.textContent = 'Une nouvelle version de MyTube est disponible.';
+        }
+
+        if (updateInitialActions) {
+            updateInitialActions.style.display = 'flex';
+        }
+        if (updateProgressSection) {
+            updateProgressSection.style.display = 'none';
+        }
+        if (updateReadyActions) {
+            updateReadyActions.style.display = 'none';
+        }
+
+        openUpdatePopup();
+    });
+
+    window.electronAPI.onUpdateDownloadProgress((progress) => {
+        if (!updatePopup || !updateProgressSection || !updateProgressText) return;
+
+        if (updateInitialActions) {
+            updateInitialActions.style.display = 'none';
+        }
+        updateProgressSection.style.display = 'block';
+        if (updateReadyActions) {
+            updateReadyActions.style.display = 'none';
+        }
+
+        let percent = 0;
+        if (progress && typeof progress.percent === 'number') {
+            percent = Math.round(progress.percent);
+        }
+        let text = `Téléchargement de la mise à jour: ${percent}%`;
+        if (progress && typeof progress.transferred === 'number' && typeof progress.total === 'number') {
+            const transferredMb = (progress.transferred / 1024 / 1024).toFixed(1);
+            const totalMb = (progress.total / 1024 / 1024).toFixed(1);
+            text += ` (${transferredMb}/${totalMb} Mo)`;
+        }
+        if (progress && typeof progress.bytesPerSecond === 'number') {
+            const speedMb = (progress.bytesPerSecond / 1024 / 1024).toFixed(2);
+            text += ` • ${speedMb} Mo/s`;
+        }
+
+        updateProgressText.textContent = text;
+    });
+
+    window.electronAPI.onUpdateDownloaded((info) => {
+        if (!updatePopup) return;
+
+        if (info && info.version) {
+            latestAvailableUpdateVersion = info.version;
+            if (newVersionLabel) {
+                newVersionLabel.textContent = info.version;
+            }
+        }
+
+        if (updateProgressSection) {
+            updateProgressSection.style.display = 'none';
+        }
+        if (updateInitialActions) {
+            updateInitialActions.style.display = 'none';
+        }
+        if (updateReadyActions) {
+            updateReadyActions.style.display = 'flex';
+        }
+        if (updateMessage) {
+            updateMessage.textContent = 'La mise à jour a été téléchargée. Redémarrer l’application pour appliquer les changements ?';
+        }
+    });
+
+    window.electronAPI.onUpdateError((info) => {
+        const message = info && info.message
+            ? info.message
+            : 'Erreur lors de la vérification des mises à jour.';
+        displayUserMessage(message, 'error');
+        closeUpdatePopupInternal();
+    });
+
+    // We intentionally do not show anything when there is no update to avoid noise
+    window.electronAPI.onUpdateNotAvailable(() => {
+        // no-op
+    });
+
+    // Trigger a one-time check for updates when the UI is ready
+    window.electronAPI.checkForUpdates().catch((error) => {
+        console.error('Error checking for app updates:', error);
+    });
+}
+
 // Cancel download button handler
 cancelDownloadBtn.addEventListener('click', async () => {
     try {
@@ -1087,3 +1315,6 @@ initializePath();
 
 // Check yt-dlp and ffmpeg availability and show popup if needed
 checkAndShowBinaryPopup();
+
+// Check for application updates on startup and handle custom UI
+initAutoUpdateHandling();
