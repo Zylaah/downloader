@@ -992,16 +992,12 @@ if (playlistSingleBtn && playlistFullBtn) {
         playlistMode = 'single';
         selectedVideoUrl = normalizeYouTubeUrl(originalVideoUrl || selectedVideoUrl);
         updatePlaylistUI();
+        // Just hide playlist details, keep cached items so we can
+        // restore them instantly if the user switches back to
+        // "Playlist complète" without changing the URL.
         if (playlistDetails) {
             playlistDetails.style.display = 'none';
         }
-        if (playlistItemsList) {
-            playlistItemsList.innerHTML = '';
-        }
-        if (playlistDetailsHeader) {
-            playlistDetailsHeader.textContent = '';
-        }
-        currentPlaylistItems = [];
         isActivePlaylistDownload = false;
         lastPlaylistIndex = null;
     });
@@ -1015,6 +1011,14 @@ if (playlistSingleBtn && playlistFullBtn) {
         updatePlaylistUI();
 
         if (!playlistDetails || !playlistItemsList || !playlistDetailsHeader) {
+            return;
+        }
+
+        // If we already have playlist data for this URL, just show it
+        // without re-fetching from yt-dlp.
+        if (currentPlaylistItems && currentPlaylistItems.length > 0) {
+            playlistDetails.style.display = 'block';
+            playlistDetailsHeader.textContent = `Playlist complète (${currentPlaylistItems.length} vidéos)`;
             return;
         }
 
