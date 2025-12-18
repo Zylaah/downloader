@@ -19,15 +19,15 @@
             <img id="titlebar-logo" src="./src/img/icon.png" alt="AudioTube" class="titlebar-logo">
             <div class="titlebar-title">MyTube</div>
         </div>
-        <div class="titlebar-controls">
-            <div class="titlebar-button" id="minimizeBtn" title="Réduire">
+            <div class="titlebar-controls">
+            <div class="titlebar-button" id="minimizeBtn" title="">
                 <svg viewBox="0 0 10 10"><path d="M0,5 L10,5" stroke="#000" stroke-width="1.5"/></svg>
             </div>
-            <div class="titlebar-button" id="maximizeRestoreBtn" title="Agrandir">
+            <div class="titlebar-button" id="maximizeRestoreBtn" title="">
                 <svg id="maximizeIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 4H20V20H4V4Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 <svg id="restoreIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:none;"><path d="M4 8H16V20H4V8Z" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 4H20V16H16" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
-            <div class="titlebar-button close-button" id="closeBtn" title="Fermer">
+            <div class="titlebar-button close-button" id="closeBtn" title="">
                 <svg viewBox="0 0 10 10"><path d="M0,0 L10,10 M10,0 L0,10" stroke="#000" stroke-width="1.5"/></svg>
             </div>
         </div>
@@ -38,51 +38,59 @@
     <!-- Settings popup for download location -->
     <div id="settingsPopup" class="popup-overlay">
         <div class="popup-container">
-            <div class="popup-title">Emplacement de téléchargement</div>
+            <div class="popup-title" data-i18n-key="settings.downloadLocationTitle">Emplacement de téléchargement</div>
             <div class="popup-close" id="closeSettingsPopup">
                 <svg viewBox="0 0 24 24" width="18" height="18">
                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#555"/>
                 </svg>
             </div>
             <div class="path-display-group">
-                <div id="downloadPathDisplay" title="Emplacement actuel de téléchargement"></div>
-                <button id="setPathButton" class="btn-secondary">Changer</button>
+                <div id="downloadPathDisplay" title="" data-i18n-attr="title:settings.currentPathTooltip"></div>
+                <button id="setPathButton" class="btn-secondary" data-i18n-key="settings.changeButton">Changer</button>
             </div>
 
+            <div class="language-settings">
+                <span class="section-label" data-i18n-key="settings.languageLabel">Langue</span>
+                <div class="language-options">
+                    <button class="language-option-btn" data-lang="fr">FR</button>
+                    <button class="language-option-btn" data-lang="en">EN</button>
+                    <button class="language-option-btn" data-lang="es">ES</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Binary download popup -->
     <div id="binaryDownloadPopup" class="popup-overlay">
         <div class="popup-container">
-            <div class="popup-title">Téléchargement requis</div>
+            <div class="popup-title" data-i18n-key="binaries.title">Téléchargement requis</div>
             <div class="popup-close" id="closeBinaryDownloadPopup">
                 <svg viewBox="0 0 24 24" width="18" height="18">
                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#555"/>
                 </svg>
             </div>
             <div class="binary-download-content">
-                <p class="binary-download-message" id="binaryDownloadMessage">
+                <p class="binary-download-message" id="binaryDownloadMessage" data-i18n-key="binaries.message">
                     Certains composants requis sont manquants. Veuillez les télécharger pour continuer.
                 </p>
                 <div class="binary-download-items">
                     <div class="binary-item" id="ytDlpBinaryItem">
                         <div class="binary-item-info">
-                            <div class="binary-item-name">yt-dlp</div>
-                            <div class="binary-item-status" id="ytDlpStatus">Non disponible</div>
+                            <div class="binary-item-name" data-i18n-key="binaries.ytDlpName">yt-dlp</div>
+                            <div class="binary-item-status" id="ytDlpStatus" data-i18n-key="binaries.notAvailable">Non disponible</div>
                         </div>
                         <button id="downloadYtDlpBtn" class="btn-secondary binary-download-btn">Télécharger</button>
                     </div>
                     <div class="binary-item" id="ffmpegBinaryItem">
                         <div class="binary-item-info">
-                            <div class="binary-item-name">FFmpeg</div>
-                            <div class="binary-item-status" id="ffmpegStatus">Non disponible</div>
+                            <div class="binary-item-name" data-i18n-key="binaries.ffmpegName">FFmpeg</div>
+                            <div class="binary-item-status" id="ffmpegStatus" data-i18n-key="binaries.notAvailable">Non disponible</div>
                         </div>
                         <button id="downloadFfmpegBtn" class="btn-secondary binary-download-btn">Télécharger</button>
                     </div>
                 </div>
                 <div class="binary-download-progress" id="binaryDownloadProgress" style="display: none;">
-                    <div class="progress-text" id="binaryDownloadProgressText">Téléchargement en cours...</div>
+                    <div class="progress-text" id="binaryDownloadProgressText" data-i18n-key="binaries.genericDownloading">Téléchargement en cours...</div>
                 </div>
             </div>
         </div>
@@ -91,38 +99,38 @@
     <!-- Application update popup -->
     <div id="updatePopup" class="popup-overlay">
         <div class="popup-container">
-            <div class="popup-title">Mise à jour disponible</div>
+            <div class="popup-title" data-i18n-key="update.title">Mise à jour disponible</div>
             <div class="popup-close" id="closeUpdatePopup">
                 <svg viewBox="0 0 24 24" width="18" height="18">
                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#555"/>
                 </svg>
             </div>
             <div class="update-content">
-                <p class="update-message" id="updateMessage">
+                <p class="update-message" id="updateMessage" data-i18n-key="update.availableMessage">
                     Une nouvelle version de MyTube est disponible.
                 </p>
                 <div class="update-details" id="updateDetails">
                     <div class="update-version-row">
-                        <span class="update-label">Version actuelle :</span>
+                        <span class="update-label" data-i18n-key="update.currentVersionLabel">Version actuelle :</span>
                         <span class="update-value" id="currentVersionLabel">-</span>
                     </div>
                     <div class="update-version-row">
-                        <span class="update-label">Nouvelle version :</span>
+                        <span class="update-label" data-i18n-key="update.newVersionLabel">Nouvelle version :</span>
                         <span class="update-value" id="newVersionLabel">-</span>
                     </div>
                 </div>
                 <div class="update-release-notes" id="updateReleaseNotes" style="display: none;"></div>
                 <div class="update-actions" id="updateInitialActions">
-                    <button id="updateInstallBtn" class="btn-primary">Télécharger et installer</button>
-                    <button id="updateRemindLaterBtn" class="btn-secondary">Plus tard</button>
-                    <button id="updateSkipBtn" class="btn-text">Ignorer cette version</button>
+                    <button id="updateInstallBtn" class="btn-primary" data-i18n-key="update.installButton">Télécharger et installer</button>
+                    <button id="updateRemindLaterBtn" class="btn-secondary" data-i18n-key="update.laterButton">Plus tard</button>
+                    <button id="updateSkipBtn" class="btn-text" data-i18n-key="update.skipButton">Ignorer cette version</button>
                 </div>
                 <div class="update-progress" id="updateProgressSection" style="display: none;">
-                    <div class="update-progress-text" id="updateProgressText">Préparation du téléchargement de la mise à jour...</div>
+                    <div class="update-progress-text" id="updateProgressText" data-i18n-key="update.preparingDownload">Préparation du téléchargement de la mise à jour...</div>
                 </div>
                 <div class="update-actions" id="updateReadyActions" style="display: none;">
-                    <button id="updateRestartNowBtn" class="btn-primary">Redémarrer maintenant</button>
-                    <button id="updateRestartLaterBtn" class="btn-secondary">Plus tard</button>
+                    <button id="updateRestartNowBtn" class="btn-primary" data-i18n-key="update.restartNowButton">Redémarrer maintenant</button>
+                    <button id="updateRestartLaterBtn" class="btn-secondary" data-i18n-key="update.restartLaterButton">Plus tard</button>
                 </div>
             </div>
         </div>
@@ -145,7 +153,7 @@
 
             <div class="search-section">
                 <div class="search-container">
-                    <input type="text" id="searchQuery" placeholder="Rechercher une vidéo ou coller un lien YouTube...">
+                    <input type="text" id="searchQuery" placeholder="Rechercher une vidéo ou coller un lien YouTube..." data-i18n-attr="placeholder:search.placeholder">
                     <button id="searchButton">
                         <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                             <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -157,15 +165,15 @@
             
             <!-- Selected video display -->
             <div id="selectedVideoContainer" class="selected-video-container">
-                <div class="selected-video-label">Vidéo sélectionnée :</div>
+                <div class="selected-video-label" data-i18n-key="playlist.selectedLabel">Vidéo sélectionnée :</div>
                 <div id="selectedVideoTitle" class="selected-video-title"></div>
 
                 <!-- Playlist options (shown only when a playlist URL is detected) -->
                 <div id="playlistOptions" class="playlist-options" style="display: none;">
-                    <div class="playlist-label">Cette URL est une playlist. Que voulez-vous télécharger&nbsp;?</div>
+                    <div class="playlist-label" data-i18n-key="playlist.isPlaylistLabel">Cette URL est une playlist. Que voulez-vous télécharger&nbsp;?</div>
                     <div class="playlist-buttons">
-                        <button id="playlistSingleBtn" class="playlist-option-btn active">Vidéo actuelle seulement</button>
-                        <button id="playlistFullBtn" class="playlist-option-btn">Playlist complète</button>
+                        <button id="playlistSingleBtn" class="playlist-option-btn active" data-i18n-key="playlist.singleButton">Vidéo actuelle seulement</button>
+                        <button id="playlistFullBtn" class="playlist-option-btn" data-i18n-key="playlist.fullButton">Playlist complète</button>
                     </div>
                 </div>
 
@@ -183,24 +191,24 @@
                 <div class="progress-controls">
                     <div id="progressBarText">0%</div>
                 </div>
-                <button id="cancelDownloadBtn" class="cancel-download-btn" style="display: none;">Annuler</button>
+                <button id="cancelDownloadBtn" class="cancel-download-btn" style="display: none;" data-i18n-key="download.cancelButton">Annuler</button>
             </div>
 
             <div id="completionNotification" class="completion-notification">
-                <div class="completion-message">Téléchargement terminé avec succès !</div>
-                <button id="downloadMoreBtn" class="download-more-btn">Télécharger plus</button>
+                <div class="completion-message" data-i18n-key="download.completionNotification">Téléchargement terminé avec succès !</div>
+                <button id="downloadMoreBtn" class="download-more-btn" data-i18n-key="download.downloadMoreButton">Télécharger plus</button>
             </div>
 
             <div class="download-section">
                 <div class="format-selection">
-                    <label for="formatSelect">Format :</label>
+                    <label for="formatSelect" data-i18n-key="download.formatLabel">Format :</label>
                     <select id="formatSelect">
-                        <option value="audio">Audio (MP3)</option>
-                        <option value="video">Vidéo (MP4)</option>
+                        <option value="audio" data-i18n-key="download.audioOption">Audio (MP3)</option>
+                        <option value="video" data-i18n-key="download.videoOption">Vidéo (MP4)</option>
                     </select>
-                    <button id="pasteClipboardButton" class="paste-clipboard-btn">Coller mon lien</button>
+                    <button id="pasteClipboardButton" class="paste-clipboard-btn" data-i18n-key="download.pasteLinkButton">Coller mon lien</button>
                 </div>
-                <button id="downloadButton">Télécharger l'audio</button>
+                <button id="downloadButton" data-i18n-key="download.audioButton">Télécharger l'audio</button>
             </div>
         </div>
     </div>

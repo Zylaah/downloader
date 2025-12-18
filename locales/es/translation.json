@@ -1,0 +1,116 @@
+{
+  "translation": {
+    "app": {
+      "name": "MyTube",
+      "languageTooltip": "Cambiar idioma"
+    },
+    "titlebar": {
+      "minimize": "Minimizar",
+      "maximize": "Maximizar",
+      "close": "Cerrar"
+    },
+    "settings": {
+      "downloadLocationTitle": "Ubicación de descarga",
+      "currentPathTooltip": "Ubicación de descarga actual",
+      "changeButton": "Cambiar",
+      "languageLabel": "Idioma"
+    },
+    "binaries": {
+      "title": "Descargas requeridas",
+      "message": "Faltan algunos componentes necesarios. Descárgalos para continuar.",
+      "ytDlpName": "yt-dlp",
+      "ffmpegName": "FFmpeg",
+      "notAvailable": "No disponible",
+      "downloading": "Descargando...",
+      "ytDlpDownloaded": "¡yt-dlp se descargó correctamente!",
+      "ffmpegDownloaded": "¡FFmpeg se descargó correctamente!",
+      "genericDownloading": "Descargando..."
+    },
+    "update": {
+      "title": "Actualización disponible",
+      "availableMessage": "Hay una nueva versión de MyTube disponible.",
+      "currentVersionLabel": "Versión actual:",
+      "newVersionLabel": "Nueva versión:",
+      "installButton": "Descargar e instalar",
+      "laterButton": "Más tarde",
+      "skipButton": "Omitir esta versión",
+      "restartNowButton": "Reiniciar ahora",
+      "restartLaterButton": "Más tarde",
+      "preparingDownload": "Preparando la descarga de la actualización...",
+      "downloadProgress": "Descargando actualización: {{percent}}%",
+      "downloadCompletedMessage": "La actualización se ha descargado. ¿Reiniciar la aplicación para aplicar los cambios?",
+      "errorChecking": "Error al buscar actualizaciones."
+    },
+    "search": {
+      "placeholder": "Buscar un vídeo o pegar un enlace de YouTube...",
+      "noResults": "No se han encontrado resultados",
+      "searching": "Buscando...",
+      "error": "Error durante la búsqueda",
+      "invalidQuery": "Introduce una consulta de búsqueda o un enlace de YouTube"
+    },
+    "playlist": {
+      "selectedLabel": "Vídeo seleccionado:",
+      "isPlaylistLabel": "Este enlace es una lista de reproducción. ¿Qué quieres descargar?",
+      "singleButton": "Solo el vídeo actual",
+      "fullButton": "Lista de reproducción completa",
+      "loading": "Cargando lista de reproducción...",
+      "cannotRetrieve": "No se puede recuperar la lista de reproducción",
+      "none": "No hay elementos en esta lista de reproducción",
+      "untitledVideo": "Vídeo sin título",
+      "timeoutError": "Obtener la información del vídeo está tardando demasiado o ha fallado."
+    },
+    "download": {
+      "formatLabel": "Formato:",
+      "audioOption": "Audio (MP3)",
+      "videoOption": "Vídeo (MP4)",
+      "pasteLinkButton": "Pegar mi enlace",
+      "audioButton": "Descargar audio",
+      "videoButton": "Descargar vídeo",
+      "cancelButton": "Cancelar",
+      "completionNotification": "¡Descarga completada con éxito!",
+      "downloadMoreButton": "Descargar más",
+      "preparing": "Preparando...",
+      "finalizing": "Finalizando descarga...",
+      "converting": "Convirtiendo...",
+      "progress": "Descarga: {{percent}}%",
+      "preparingToDirectory": "Preparando descarga en: {{downloadPath}}",
+      "startDownload": "Iniciando descarga...",
+      "mustSelectVideo": "Selecciona primero un vídeo",
+      "mustSetDownloadPath": "Elige una ubicación de descarga",
+      "errorSettingDownloadPath": "Error al configurar la ubicación de descarga",
+      "cancelledShort": "Descarga cancelada",
+      "cancelledLong": "Descarga cancelada por el usuario.",
+      "alreadyInProgress": "Ya hay una descarga en curso. Espera a que termine.",
+      "completeInDirectoryAudio": "Descarga finalizada. Audio guardado en {{downloadPath}}. (El nombre del archivo se basa en el título del vídeo)",
+      "completeInDirectoryVideo": "Descarga finalizada. Vídeo guardado en {{downloadPath}}. (El nombre del archivo se basa en el título del vídeo)",
+      "completeWithPath": "Descarga finalizada: {{outputPath}}",
+      "errorGenericPrefix": "Error:",
+      "cannotCancel": "No se puede cancelar la descarga",
+      "cancellationError": "Error al cancelar",
+      "noActiveDownloadToCancel": "No hay ninguna descarga activa que cancelar"
+    },
+    "clipboard": {
+      "errorRead": "No se puede leer el portapapeles"
+    },
+    "messages": {
+      "invalidUrl": "Please enter a valid URL.",
+      "mustProvideUrl": "Please provide a valid URL.",
+      "mustProvideQuery": "Please enter a search query.",
+      "searchFailed": "Failed to search: {{error}}",
+      "videoInfoFailed": "Failed to get video info: {{error}}",
+      "playlistInfoFailed": "Failed to get playlist info: {{error}}",
+      "searchSynchronousError": "Synchronous handler error: {{error}}"
+    },
+    "binariesStatus": {
+      "ytDlpUnavailable": "yt-dlp no disponible: {{error}}",
+      "ytDlpAvailable": "Binario de yt-dlp disponible en: {{path}}",
+      "ytDlpCheckError": "Error al comprobar la disponibilidad de yt-dlp",
+      "ffmpegUnavailable": "ffmpeg no disponible: {{error}}",
+      "ffmpegAvailable": "Binario de ffmpeg disponible en: {{path}}",
+      "ffmpegCheckError": "Error al comprobar la disponibilidad de ffmpeg",
+      "ffmpegMissingWarning": "No se ha encontrado un binario de ffmpeg. La conversión de audio puede no funcionar correctamente."
+    }
+  }
+}
+
+

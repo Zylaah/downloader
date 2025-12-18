@@ -10,6 +10,33 @@ const path = require('path');
 const fs = require('fs');
 const YTDlpWrap = require('yt-dlp-wrap').default;
 
+// i18n: Load translation JSON files from locales directory
+function loadTranslation(lang) {
+  try {
+    const filePath = path.join(__dirname, 'locales', lang, 'translation.json');
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.warn(`[i18n] Failed to load locale ${lang}:`, error.message);
+    return null;
+  }
+}
+
+function getTranslationBundle(lang) {
+  const data = loadTranslation(lang);
+  return data && data.translation ? data.translation : null;
+}
+
+// Get stored language or default to 'fr'
+function getStoredLanguage() {
+  return store.get('language', 'fr');
+}
+
+// Store language preference
+function setStoredLanguage(lang) {
+  store.set('language', lang);
+}
+
 // Toggle verbose download logging (progress, yt-dlp events, etc.)
 const ENABLE_DOWNLOAD_LOGS = false;
 
@@ -884,6 +911,30 @@ ipcMain.handle('select-download-path', async () => {
   const selectedPath = filePaths[0];
   store.set('downloadPath', selectedPath);
   return selectedPath;
+});
+
+// i18n: IPC handlers for translations
+// Synchronous handler for initial load (called during preload)
+ipcMain.on('get-initial-translations', (event) => {
+  const lang = getStoredLanguage();
+  const translation = getTranslationBundle(lang);
+  event.returnValue = {
+    language: lang,
+    translation: translation || {}
+  };
+});
+
+// Async handler for language changes
+ipcMain.handle('get-translation-bundle', (_event, lang) => {
+  const translation = getTranslationBundle(lang);
+  if (translation) {
+    setStoredLanguage(lang);
+    return {
+      language: lang,
+      translation: translation
+    };
+  }
+  return null;
 });
 
 function createWindow () {

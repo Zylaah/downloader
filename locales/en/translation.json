@@ -1,0 +1,116 @@
+{
+  "translation": {
+    "app": {
+      "name": "MyTube",
+      "languageTooltip": "Change language"
+    },
+    "titlebar": {
+      "minimize": "Minimize",
+      "maximize": "Maximize",
+      "close": "Close"
+    },
+    "settings": {
+      "downloadLocationTitle": "Download location",
+      "currentPathTooltip": "Current download location",
+      "changeButton": "Change",
+      "languageLabel": "Language"
+    },
+    "binaries": {
+      "title": "Required downloads",
+      "message": "Some required components are missing. Please download them to continue.",
+      "ytDlpName": "yt-dlp",
+      "ffmpegName": "FFmpeg",
+      "notAvailable": "Not available",
+      "downloading": "Downloading...",
+      "ytDlpDownloaded": "yt-dlp downloaded successfully!",
+      "ffmpegDownloaded": "FFmpeg downloaded successfully!",
+      "genericDownloading": "Downloading..."
+    },
+    "update": {
+      "title": "Update available",
+      "availableMessage": "A new version of MyTube is available.",
+      "currentVersionLabel": "Current version:",
+      "newVersionLabel": "New version:",
+      "installButton": "Download and install",
+      "laterButton": "Later",
+      "skipButton": "Skip this version",
+      "restartNowButton": "Restart now",
+      "restartLaterButton": "Later",
+      "preparingDownload": "Preparing update download...",
+      "downloadProgress": "Downloading update: {{percent}}%",
+      "downloadCompletedMessage": "The update has been downloaded. Restart the application to apply the changes?",
+      "errorChecking": "Error checking for updates."
+    },
+    "search": {
+      "placeholder": "Search for a video or paste a YouTube link...",
+      "noResults": "No results found",
+      "searching": "Searching...",
+      "error": "Error while searching",
+      "invalidQuery": "Please enter a search query or a YouTube link"
+    },
+    "playlist": {
+      "selectedLabel": "Selected video:",
+      "isPlaylistLabel": "This URL is a playlist. What would you like to download?",
+      "singleButton": "Current video only",
+      "fullButton": "Full playlist",
+      "loading": "Loading playlist...",
+      "cannotRetrieve": "Unable to retrieve playlist",
+      "none": "No items in this playlist",
+      "untitledVideo": "Untitled video",
+      "timeoutError": "Fetching video information is taking too long or has failed."
+    },
+    "download": {
+      "formatLabel": "Format:",
+      "audioOption": "Audio (MP3)",
+      "videoOption": "Video (MP4)",
+      "pasteLinkButton": "Paste my link",
+      "audioButton": "Download audio",
+      "videoButton": "Download video",
+      "cancelButton": "Cancel",
+      "completionNotification": "Download completed successfully!",
+      "downloadMoreButton": "Download more",
+      "preparing": "Preparing...",
+      "finalizing": "Finalizing download...",
+      "converting": "Converting...",
+      "progress": "Download: {{percent}}%",
+      "preparingToDirectory": "Preparing to download to: {{downloadPath}}",
+      "startDownload": "Starting download...",
+      "mustSelectVideo": "Please select a video first",
+      "mustSetDownloadPath": "Please choose a download location",
+      "errorSettingDownloadPath": "Error setting download path",
+      "cancelledShort": "Download cancelled",
+      "cancelledLong": "Download cancelled by the user.",
+      "alreadyInProgress": "A download is already in progress. Please wait for it to finish.",
+      "completeInDirectoryAudio": "Download finished. Audio saved to {{downloadPath}}. (File name is based on the video title)",
+      "completeInDirectoryVideo": "Download finished. Video saved to {{downloadPath}}. (File name is based on the video title)",
+      "completeWithPath": "Download finished: {{outputPath}}",
+      "errorGenericPrefix": "Error:",
+      "cannotCancel": "Unable to cancel download",
+      "cancellationError": "Error while cancelling",
+      "noActiveDownloadToCancel": "No active download to cancel"
+    },
+    "clipboard": {
+      "errorRead": "Unable to read clipboard"
+    },
+    "messages": {
+      "invalidUrl": "Please enter a valid URL.",
+      "mustProvideUrl": "Please provide a valid URL.",
+      "mustProvideQuery": "Please enter a search query.",
+      "searchFailed": "Failed to search: {{error}}",
+      "videoInfoFailed": "Failed to get video info: {{error}}",
+      "playlistInfoFailed": "Failed to get playlist info: {{error}}",
+      "searchSynchronousError": "Synchronous handler error: {{error}}"
+    },
+    "binariesStatus": {
+      "ytDlpUnavailable": "yt-dlp not available: {{error}}",
+      "ytDlpAvailable": "yt-dlp binary available at: {{path}}",
+      "ytDlpCheckError": "Error checking yt-dlp availability",
+      "ffmpegUnavailable": "ffmpeg not available: {{error}}",
+      "ffmpegAvailable": "ffmpeg binary available at: {{path}}",
+      "ffmpegCheckError": "Error checking ffmpeg availability",
+      "ffmpegMissingWarning": "No ffmpeg binary found. Audio conversion may not work properly."
+    }
+  }
+}
+
+

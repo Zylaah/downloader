@@ -1,0 +1,116 @@
+{
+  "translation": {
+    "app": {
+      "name": "MyTube",
+      "languageTooltip": "Changer de langue"
+    },
+    "titlebar": {
+      "minimize": "Réduire",
+      "maximize": "Agrandir",
+      "close": "Fermer"
+    },
+    "settings": {
+      "downloadLocationTitle": "Emplacement de téléchargement",
+      "currentPathTooltip": "Emplacement actuel de téléchargement",
+      "changeButton": "Changer",
+      "languageLabel": "Langue"
+    },
+    "binaries": {
+      "title": "Téléchargement requis",
+      "message": "Certains composants requis sont manquants. Veuillez les télécharger pour continuer.",
+      "ytDlpName": "yt-dlp",
+      "ffmpegName": "FFmpeg",
+      "notAvailable": "Non disponible",
+      "downloading": "Téléchargement...",
+      "ytDlpDownloaded": "yt-dlp téléchargé avec succès!",
+      "ffmpegDownloaded": "FFmpeg téléchargé avec succès!",
+      "genericDownloading": "Téléchargement en cours..."
+    },
+    "update": {
+      "title": "Mise à jour disponible",
+      "availableMessage": "Une nouvelle version de MyTube est disponible.",
+      "currentVersionLabel": "Version actuelle :",
+      "newVersionLabel": "Nouvelle version :",
+      "installButton": "Télécharger et installer",
+      "laterButton": "Plus tard",
+      "skipButton": "Ignorer cette version",
+      "restartNowButton": "Redémarrer maintenant",
+      "restartLaterButton": "Plus tard",
+      "preparingDownload": "Préparation du téléchargement de la mise à jour...",
+      "downloadProgress": "Téléchargement de la mise à jour: {{percent}}%",
+      "downloadCompletedMessage": "La mise à jour a été téléchargée. Redémarrer l’application pour appliquer les changements ?",
+      "errorChecking": "Erreur lors de la vérification des mises à jour."
+    },
+    "search": {
+      "placeholder": "Rechercher une vidéo ou coller un lien YouTube...",
+      "noResults": "Aucun résultat trouvé",
+      "searching": "Recherche en cours...",
+      "error": "Erreur lors de la recherche",
+      "invalidQuery": "Veuillez entrer une requête de recherche ou un lien YouTube"
+    },
+    "playlist": {
+      "selectedLabel": "Vidéo sélectionnée :",
+      "isPlaylistLabel": "Cette URL est une playlist. Que voulez-vous télécharger ?",
+      "singleButton": "Vidéo actuelle seulement",
+      "fullButton": "Playlist complète",
+      "loading": "Chargement de la playlist...",
+      "cannotRetrieve": "Impossible de récupérer la playlist",
+      "none": "Aucun élément dans cette playlist",
+      "untitledVideo": "Vidéo sans titre",
+      "timeoutError": "La récupération des informations de la vidéo est trop longue ou a échoué."
+    },
+    "download": {
+      "formatLabel": "Format :",
+      "audioOption": "Audio (MP3)",
+      "videoOption": "Vidéo (MP4)",
+      "pasteLinkButton": "Coller mon lien",
+      "audioButton": "Télécharger l'audio",
+      "videoButton": "Télécharger la vidéo",
+      "cancelButton": "Annuler",
+      "completionNotification": "Téléchargement terminé avec succès !",
+      "downloadMoreButton": "Télécharger plus",
+      "preparing": "Préparation...",
+      "finalizing": "Finalisation du téléchargement...",
+      "converting": "Conversion en cours...",
+      "progress": "Téléchargement: {{percent}}%",
+      "preparingToDirectory": "Preparing to download to: {{downloadPath}}",
+      "startDownload": "Début du téléchargement...",
+      "mustSelectVideo": "Veuillez sélectionner une vidéo d'abord",
+      "mustSetDownloadPath": "Veuillez définir un emplacement de téléchargement",
+      "errorSettingDownloadPath": "Error setting download path",
+      "cancelledShort": "Téléchargement annulé",
+      "cancelledLong": "Téléchargement annulé par l'utilisateur.",
+      "alreadyInProgress": "Un téléchargement est déjà en cours. Veuillez attendre qu'il se termine.",
+      "completeInDirectoryAudio": "Téléchargement terminé. Audio enregistré dans {{downloadPath}}. (Le nom du fichier est basé sur le titre de la vidéo)",
+      "completeInDirectoryVideo": "Téléchargement terminé. Vidéo enregistrée dans {{downloadPath}}. (Le nom du fichier est basé sur le titre de la vidéo)",
+      "completeWithPath": "Téléchargement terminé: {{outputPath}}",
+      "errorGenericPrefix": "Erreur:",
+      "cannotCancel": "Impossible d'annuler le téléchargement",
+      "cancellationError": "Erreur lors de l'annulation",
+      "noActiveDownloadToCancel": "No active download to cancel"
+    },
+    "clipboard": {
+      "errorRead": "Impossible de lire le presse-papiers"
+    },
+    "messages": {
+      "invalidUrl": "Please enter a valid URL.",
+      "mustProvideUrl": "Please provide a valid URL.",
+      "mustProvideQuery": "Please enter a search query.",
+      "searchFailed": "Failed to search: {{error}}",
+      "videoInfoFailed": "Failed to get video info: {{error}}",
+      "playlistInfoFailed": "Failed to get playlist info: {{error}}",
+      "searchSynchronousError": "Synchronous handler error: {{error}}"
+    },
+    "binariesStatus": {
+      "ytDlpUnavailable": "yt-dlp not available: {{error}}",
+      "ytDlpAvailable": "yt-dlp binary available at: {{path}}",
+      "ytDlpCheckError": "Error checking yt-dlp availability",
+      "ffmpegUnavailable": "ffmpeg not available: {{error}}",
+      "ffmpegAvailable": "ffmpeg binary available at: {{path}}",
+      "ffmpegCheckError": "Error checking ffmpeg availability",
+      "ffmpegMissingWarning": "No ffmpeg binary found. Audio conversion may not work properly."
+    }
+  }
+}
+
+

@@ -84,6 +84,127 @@ let lastPlaylistIndex = null;
 let latestAvailableUpdateVersion = null;
 let hasInitializedAutoUpdateUI = false;
 
+// Language handling
+const LANGUAGE_STORAGE_KEY = 'mytube_language';
+
+function getStoredLanguage() {
+    try {
+        const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+        if (stored && window.i18n && window.i18n.getSupportedLanguages().includes(stored)) {
+            return stored;
+        }
+    } catch (e) {
+        console.warn('Could not read stored language from localStorage:', e);
+    }
+    // Fallback to browser language if possible
+    if (navigator && navigator.language) {
+        const base = navigator.language.split('-')[0];
+        if (window.i18n && window.i18n.getSupportedLanguages().includes(base)) {
+            return base;
+        }
+    }
+    return (window.i18n && window.i18n.getLanguage && window.i18n.getLanguage()) || 'fr';
+}
+
+function setStoredLanguage(lang) {
+    try {
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+    } catch (e) {
+        console.warn('Could not store language in localStorage:', e);
+    }
+}
+
+function applyI18nToElement(element) {
+    if (!window.i18n || !element) return;
+    const key = element.getAttribute('data-i18n-key');
+    if (key) {
+        element.textContent = window.i18n.t(key);
+    }
+    const attrMapping = element.getAttribute('data-i18n-attr');
+    if (attrMapping) {
+        // Format: "attr:key,otherAttr:other.key"
+        const mappings = attrMapping.split(',').map(v => v.trim()).filter(Boolean);
+        mappings.forEach(mapping => {
+            const parts = mapping.split(':');
+            if (parts.length === 2) {
+                const attr = parts[0].trim();
+                const attrKey = parts[1].trim();
+                const value = window.i18n.t(attrKey);
+                if (value && attr) {
+                    element.setAttribute(attr, value);
+                }
+            }
+        });
+    }
+}
+
+function applyTranslations() {
+    if (!window.i18n) return;
+
+    // Simple elements with data-i18n-key
+    document.querySelectorAll('[data-i18n-key]').forEach(el => applyI18nToElement(el));
+    // Elements with data-i18n-attr (placeholder, title, etc.)
+    document.querySelectorAll('[data-i18n-attr]').forEach(el => applyI18nToElement(el));
+
+    // Dynamic text that depends on UI state
+    const selectedFormat = formatSelect ? formatSelect.value : 'audio';
+    if (downloadButton) {
+        if (selectedFormat === 'audio') {
+            downloadButton.textContent = window.i18n.t('download.audioButton');
+        } else {
+            downloadButton.textContent = window.i18n.t('download.videoButton');
+        }
+    }
+
+    // Titlebar control tooltips
+    if (minimizeBtn) {
+        minimizeBtn.title = window.i18n.t('titlebar.minimize');
+    }
+    if (maximizeRestoreBtn) {
+        maximizeRestoreBtn.title = window.i18n.t('titlebar.maximize');
+    }
+    if (closeBtn) {
+        closeBtn.title = window.i18n.t('titlebar.close');
+    }
+}
+
+function highlightCurrentLanguageButton(lang) {
+    const buttons = document.querySelectorAll('.language-option-btn');
+    buttons.forEach((btn) => {
+        const btnLang = btn.getAttribute('data-lang');
+        btn.classList.toggle('active', btnLang === lang);
+    });
+}
+
+function initLanguageHandling() {
+    if (!window.i18n) return;
+
+    const initialLang = getStoredLanguage();
+    window.i18n.changeLanguage(initialLang).then((effectiveLang) => {
+        setStoredLanguage(effectiveLang);
+        applyTranslations();
+        highlightCurrentLanguageButton(effectiveLang);
+    });
+
+    window.i18n.onLanguageChanged((lng) => {
+        applyTranslations();
+        highlightCurrentLanguageButton(lng);
+    });
+
+    const buttons = document.querySelectorAll('.language-option-btn');
+    buttons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const lang = btn.getAttribute('data-lang');
+            if (!lang) return;
+            window.i18n.changeLanguage(lang).then((effectiveLang) => {
+                setStoredLanguage(effectiveLang);
+                applyTranslations();
+                highlightCurrentLanguageButton(effectiveLang);
+            });
+        });
+    });
+}
+
 // Window controls event listeners
 if (minimizeBtn) {
     minimizeBtn.addEventListener('click', () => {
@@ -1348,3 +1469,6 @@ checkAndShowBinaryPopup();
 
 // Check for application updates on startup and handle custom UI
 initAutoUpdateHandling();
+
+// Initialize i18n / language handling
+initLanguageHandling();

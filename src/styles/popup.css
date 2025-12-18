@@ -110,6 +110,39 @@
     align-items: center;
 }
 
+.language-settings {
+    margin-top: 20px;
+}
+
+.language-options {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.language-option-btn {
+    min-width: 40px;
+    height: 32px;
+    border-radius: 16px;
+    border: 1px solid var(--gray-light);
+    background-color: #f7f7f7;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-dark);
+    transition: var(--transition);
+}
+
+.language-option-btn:hover {
+    background-color: #ececec;
+}
+
+.language-option-btn.active {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
 /* Binary download popup styles */
 .binary-download-content {
     margin-top: 10px;

@@ -1,5 +1,84 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// i18n: Load translations via IPC from main process (which has fs access)
+// This follows the pattern from: https://phrase.com/blog/posts/building-an-electron-app-with-internationalization-i18n/
+let i18nResources = {};
+let currentLanguage = 'fr';
+const languageListeners = new Set();
+
+// Load initial translations synchronously
+try {
+  const initial = ipcRenderer.sendSync('get-initial-translations');
+  if (initial && initial.translation) {
+    i18nResources[initial.language] = { translation: initial.translation };
+    currentLanguage = initial.language;
+  }
+} catch (error) {
+  console.warn('[i18n] Failed to load initial translations:', error);
+}
+
+function getNestedTranslation(lang, keyPath) {
+  const parts = keyPath.split('.');
+  let node = i18nResources[lang] && i18nResources[lang].translation;
+  for (const part of parts) {
+    if (!node || typeof node !== 'object') return undefined;
+    node = node[part];
+  }
+  return typeof node === 'string' ? node : undefined;
+}
+
+function interpolate(str, options) {
+  if (!options) return str;
+  return str.replace(/{{\s*([^}]+)\s*}}/g, (_match, p1) => {
+    const key = String(p1).trim();
+    return Object.prototype.hasOwnProperty.call(options, key)
+      ? String(options[key])
+      : _match;
+  });
+}
+
+function translate(key, options) {
+  if (!key) return '';
+  let value = getNestedTranslation(currentLanguage, key);
+  if (value === undefined) {
+    // Fallback to English if available
+    value = getNestedTranslation('en', key);
+  }
+  if (value === undefined) {
+    return key;
+  }
+  return interpolate(value, options);
+}
+
+async function setLanguage(lng) {
+  if (lng === currentLanguage && i18nResources[lng]) {
+    return currentLanguage;
+  }
+  
+  // Request translation bundle from main process
+  try {
+    const bundle = await ipcRenderer.invoke('get-translation-bundle', lng);
+    if (bundle && bundle.translation) {
+      i18nResources[lng] = { translation: bundle.translation };
+      currentLanguage = lng;
+      
+      // Notify listeners
+      languageListeners.forEach((listener) => {
+        try {
+          listener(currentLanguage);
+        } catch {
+          // Ignore listener errors
+        }
+      });
+      return currentLanguage;
+    }
+  } catch (error) {
+    console.warn(`[i18n] Failed to load locale ${lng}:`, error);
+  }
+  
+  return currentLanguage;
+}
+
 contextBridge.exposeInMainWorld('electronAPI', {
   downloadAudio: (url, downloadPath, playlistMode = 'single') => ipcRenderer.send('download-audio', url, downloadPath, playlistMode),
   downloadMedia: (url, downloadPath, format, playlistMode = 'single') => ipcRenderer.send('download-media', url, downloadPath, format, playlistMode),
@@ -37,4 +116,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress)),
   onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', (_event, info) => callback(info)),
   onUpdateError: (callback) => ipcRenderer.on('update-error', (_event, info) => callback(info))
+});
+
+// Expose a minimal i18n API to the renderer.
+contextBridge.exposeInMainWorld('i18n', {
+  t: (key, options) => translate(key, options),
+  changeLanguage: async (lng) => await setLanguage(lng),
+  getLanguage: () => currentLanguage,
+  getSupportedLanguages: () => ['fr', 'en', 'es'],
+  onLanguageChanged: (callback) => {
+    if (typeof callback === 'function') {
+      languageListeners.add(callback);
+    }
+  }
 });
