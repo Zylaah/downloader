@@ -37,6 +37,31 @@ function setStoredLanguage(lang) {
   store.set('language', lang);
 }
 
+// Helper function to translate a key in main process
+function translate(key, options = {}) {
+  const lang = getStoredLanguage();
+  const translations = getTranslationBundle(lang);
+  if (!translations) return key;
+  
+  // Navigate nested object (e.g., 'download.cancelledShort')
+  const parts = key.split('.');
+  let value = translations;
+  for (const part of parts) {
+    if (!value || typeof value !== 'object') return key;
+    value = value[part];
+  }
+  
+  if (typeof value !== 'string') return key;
+  
+  // Interpolate variables
+  return value.replace(/{{\s*([^}]+)\s*}}/g, (_match, p1) => {
+    const varKey = String(p1).trim();
+    return Object.prototype.hasOwnProperty.call(options, varKey)
+      ? String(options[varKey])
+      : _match;
+  });
+}
+
 // Toggle verbose download logging (progress, yt-dlp events, etc.)
 const ENABLE_DOWNLOAD_LOGS = false;
 
@@ -855,7 +880,7 @@ ipcMain.handle('cancel-download', async (event) => {
     event.sender.downloadProcessId = null;
     
     // Send cancellation event to renderer
-    event.sender.send('download-cancelled', 'Téléchargement annulé par l\'utilisateur.');
+    event.sender.send('download-cancelled', translate('download.cancelledLong'));
     
     if (killed) {
       console.error('[CANCEL] ✓✓✓ Download cancelled successfully ✓✓✓');
@@ -935,6 +960,11 @@ ipcMain.handle('get-translation-bundle', (_event, lang) => {
     };
   }
   return null;
+});
+
+// IPC handler to update language from renderer
+ipcMain.on('set-app-language', (_event, lang) => {
+  setStoredLanguage(lang);
 });
 
 function createWindow () {
@@ -1084,7 +1114,7 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
   // Check if there's already an active download
   if (activeDownloadProcesses.size > 0) {
     console.error('[DOWNLOAD] ERROR: Another download is already in progress');
-    event.reply('download-error', 'Un téléchargement est déjà en cours. Veuillez attendre qu\'il se termine.');
+    event.reply('download-error', translate('download.alreadyInProgress'));
     return;
   }
 
@@ -1108,7 +1138,7 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
   try {
     if (downloadPath && fs.existsSync(downloadPath)) {
       outputFilePath = path.join(downloadPath, '%(title)s.%(ext)s');
-      event.reply('download-progress', `Preparing to download to: ${downloadPath}`);
+      event.reply('download-progress', translate('download.preparingToDirectory', { downloadPath }));
       if (ENABLE_DOWNLOAD_LOGS) {
         console.log(`Attempting to download audio for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
       }
@@ -1122,11 +1152,11 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
       });
 
       if (canceled || !filePath) {
-        event.reply('download-cancelled', 'Téléchargement annulé par l\'utilisateur.');
+        event.reply('download-cancelled', translate('download.cancelledLong'));
         return;
       }
       outputFilePath = filePath;
-      event.reply('download-progress', 'Début du téléchargement...');
+      event.reply('download-progress', translate('download.startDownload'));
       if (ENABLE_DOWNLOAD_LOGS) {
         console.log(`Tentative de téléchargement de l'audio pour: ${url} vers ${outputFilePath}`);
       }
@@ -1287,8 +1317,8 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
       // conversion simulation (e.g., 3 seconds) to visually complete.
       setTimeout(() => {
         const finalMessage = downloadPath 
-            ? `Téléchargement terminé. Audio enregistré dans ${downloadPath}. (Le nom du fichier est basé sur le titre de la vidéo)`
-            : `Téléchargement terminé: ${outputFilePath}`;
+            ? translate('download.completeInDirectoryAudio', { downloadPath })
+            : translate('download.completeWithPath', { outputPath: outputFilePath });
         if (ENABLE_DOWNLOAD_LOGS) {
           console.log(`[Main Process] Sending download-complete. URL: ${url}`);
         }
@@ -1342,7 +1372,7 @@ ipcMain.handle('get-video-info', async (event, url) => {
           activeVideoInfoProcesses.delete(processId);
           console.warn('[Main Process] Video info request timed out');
           resolve({
-            error: 'La récupération des informations de la vidéo est trop longue ou a échoué.',
+            error: translate('playlist.timeoutError'),
             timeout: true
           });
         }
@@ -1518,7 +1548,7 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
   // Check if there's already an active download
   if (activeDownloadProcesses.size > 0) {
     console.error('[DOWNLOAD] ERROR: Another download is already in progress');
-    event.reply('download-error', 'Un téléchargement est déjà en cours. Veuillez attendre qu\'il se termine.');
+    event.reply('download-error', translate('download.alreadyInProgress'));
     return;
   }
 
@@ -1542,7 +1572,7 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
   try {
     if (downloadPath && fs.existsSync(downloadPath)) {
       outputFilePath = path.join(downloadPath, '%(title)s.%(ext)s');
-      event.reply('download-progress', `Preparing to download to: ${downloadPath}`);
+      event.reply('download-progress', translate('download.preparingToDirectory', { downloadPath }));
       if (ENABLE_DOWNLOAD_LOGS) {
         console.log(`Attempting to download ${format} for: ${url} to directory ${downloadPath} with template %(title)s.%(ext)s`);
       }
@@ -1553,18 +1583,18 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
         title: `Enregistrer la ${fileType} en tant que`,
         defaultPath: `${fileType}.${fileExtension}`,
         filters: [
-          format === 'audio' 
+          format === 'audio'
             ? { name: 'Fichiers audio', extensions: ['mp3', 'm4a', 'wav'] }
             : { name: 'Fichiers vidéo', extensions: ['mp4', 'mkv', 'avi'] }
         ]
       });
 
       if (canceled || !filePath) {
-        event.reply('download-cancelled', 'Téléchargement annulé par l\'utilisateur.');
+        event.reply('download-cancelled', translate('download.cancelledLong'));
         return;
       }
       outputFilePath = filePath;
-      event.reply('download-progress', 'Début du téléchargement...');
+      event.reply('download-progress', translate('download.startDownload'));
       if (ENABLE_DOWNLOAD_LOGS) {
         console.log(`Tentative de téléchargement de ${format} pour: ${url} vers ${outputFilePath}`);
       }
@@ -1730,8 +1760,10 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
       
       setTimeout(() => {
         const finalMessage = downloadPath 
-            ? `Téléchargement terminé. ${format === 'audio' ? 'Audio' : 'Vidéo'} enregistré dans ${downloadPath}. (Le nom du fichier est basé sur le titre de la vidéo)`
-            : `Téléchargement terminé: ${outputFilePath}`;
+            ? (format === 'audio' 
+                ? translate('download.completeInDirectoryAudio', { downloadPath })
+                : translate('download.completeInDirectoryVideo', { downloadPath }))
+            : translate('download.completeWithPath', { outputPath: outputFilePath });
         if (ENABLE_DOWNLOAD_LOGS) {
           console.log(`[Main Process] Sending download-complete. URL: ${url}`);
         }

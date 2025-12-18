@@ -21,10 +21,15 @@
       "ytDlpName": "yt-dlp",
       "ffmpegName": "FFmpeg",
       "notAvailable": "No disponible",
+      "available": "Disponible",
       "downloading": "Descargando...",
+      "downloadingYtDlp": "Descargando yt-dlp...",
+      "downloadingFfmpeg": "Descargando FFmpeg...",
       "ytDlpDownloaded": "¡yt-dlp se descargó correctamente!",
       "ffmpegDownloaded": "¡FFmpeg se descargó correctamente!",
-      "genericDownloading": "Descargando..."
+      "genericDownloading": "Descargando...",
+      "errorPrefix": "Error:",
+      "downloadFailed": "Error en la descarga"
     },
     "update": {
       "title": "Actualización disponible",
@@ -38,26 +43,38 @@
       "restartLaterButton": "Más tarde",
       "preparingDownload": "Preparando la descarga de la actualización...",
       "downloadProgress": "Descargando actualización: {{percent}}%",
+      "downloadProgressWithSize": "Descargando actualización: {{percent}}% ({{transferred}}/{{total}} {{unit}})",
+      "downloadProgressWithSpeed": "Descargando actualización: {{percent}}% • {{speed}} {{unit}}/s",
+      "downloadProgressFull": "Descargando actualización: {{percent}}% ({{transferred}}/{{total}} {{unit}}) • {{speed}} {{unit}}/s",
       "downloadCompletedMessage": "La actualización se ha descargado. ¿Reiniciar la aplicación para aplicar los cambios?",
-      "errorChecking": "Error al buscar actualizaciones."
+      "errorChecking": "Error al buscar actualizaciones.",
+      "errorStartingDownload": "Error al iniciar la descarga de la actualización",
+      "errorInstalling": "Error al instalar la actualización",
+      "sizeUnit": "MB"
     },
     "search": {
       "placeholder": "Buscar un vídeo o pegar un enlace de YouTube...",
       "noResults": "No se han encontrado resultados",
       "searching": "Buscando...",
       "error": "Error durante la búsqueda",
-      "invalidQuery": "Introduce una consulta de búsqueda o un enlace de YouTube"
+      "invalidQuery": "Introduce una consulta de búsqueda o un enlace de YouTube",
+      "fetchingVideoInfo": "Obteniendo información del vídeo...",
+      "videoFromLink": "Vídeo seleccionado desde el enlace",
+      "youtubeLinkDetected": "Enlace de YouTube detectado y seleccionado"
     },
     "playlist": {
       "selectedLabel": "Vídeo seleccionado:",
       "isPlaylistLabel": "Este enlace es una lista de reproducción. ¿Qué quieres descargar?",
       "singleButton": "Solo el vídeo actual",
       "fullButton": "Lista de reproducción completa",
+      "fullWithCount": "Lista de reproducción completa ({{count}} vídeos)",
       "loading": "Cargando lista de reproducción...",
       "cannotRetrieve": "No se puede recuperar la lista de reproducción",
+      "errorRetrieving": "Error al recuperar la lista de reproducción",
       "none": "No hay elementos en esta lista de reproducción",
       "untitledVideo": "Vídeo sin título",
-      "timeoutError": "Obtener la información del vídeo está tardando demasiado o ha fallado."
+      "timeoutError": "Obtener la información del vídeo está tardando demasiado o ha fallado.",
+      "fetchingVideoInfo": "Obteniendo información del vídeo..."
     },
     "download": {
       "formatLabel": "Formato:",

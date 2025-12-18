@@ -21,10 +21,15 @@
       "ytDlpName": "yt-dlp",
       "ffmpegName": "FFmpeg",
       "notAvailable": "Not available",
+      "available": "Available",
       "downloading": "Downloading...",
+      "downloadingYtDlp": "Downloading yt-dlp...",
+      "downloadingFfmpeg": "Downloading FFmpeg...",
       "ytDlpDownloaded": "yt-dlp downloaded successfully!",
       "ffmpegDownloaded": "FFmpeg downloaded successfully!",
-      "genericDownloading": "Downloading..."
+      "genericDownloading": "Downloading...",
+      "errorPrefix": "Error:",
+      "downloadFailed": "Download failed"
     },
     "update": {
       "title": "Update available",
@@ -38,26 +43,38 @@
       "restartLaterButton": "Later",
       "preparingDownload": "Preparing update download...",
       "downloadProgress": "Downloading update: {{percent}}%",
+      "downloadProgressWithSize": "Downloading update: {{percent}}% ({{transferred}}/{{total}} {{unit}})",
+      "downloadProgressWithSpeed": "Downloading update: {{percent}}% • {{speed}} {{unit}}/s",
+      "downloadProgressFull": "Downloading update: {{percent}}% ({{transferred}}/{{total}} {{unit}}) • {{speed}} {{unit}}/s",
       "downloadCompletedMessage": "The update has been downloaded. Restart the application to apply the changes?",
-      "errorChecking": "Error checking for updates."
+      "errorChecking": "Error checking for updates.",
+      "errorStartingDownload": "Error starting update download",
+      "errorInstalling": "Error installing update",
+      "sizeUnit": "MB"
     },
     "search": {
       "placeholder": "Search for a video or paste a YouTube link...",
       "noResults": "No results found",
       "searching": "Searching...",
       "error": "Error while searching",
-      "invalidQuery": "Please enter a search query or a YouTube link"
+      "invalidQuery": "Please enter a search query or a YouTube link",
+      "fetchingVideoInfo": "Fetching video information...",
+      "videoFromLink": "Video selected from link",
+      "youtubeLinkDetected": "YouTube link detected and selected"
     },
     "playlist": {
       "selectedLabel": "Selected video:",
       "isPlaylistLabel": "This URL is a playlist. What would you like to download?",
       "singleButton": "Current video only",
       "fullButton": "Full playlist",
+      "fullWithCount": "Full playlist ({{count}} videos)",
       "loading": "Loading playlist...",
       "cannotRetrieve": "Unable to retrieve playlist",
+      "errorRetrieving": "Error retrieving playlist",
       "none": "No items in this playlist",
       "untitledVideo": "Untitled video",
-      "timeoutError": "Fetching video information is taking too long or has failed."
+      "timeoutError": "Fetching video information is taking too long or has failed.",
+      "fetchingVideoInfo": "Fetching video information..."
     },
     "download": {
       "formatLabel": "Format:",

@@ -256,19 +256,19 @@ binaryDownloadPopup.addEventListener('click', (e) => {
 // Download yt-dlp binary
 downloadYtDlpBtn.addEventListener('click', async () => {
     downloadYtDlpBtn.disabled = true;
-    ytDlpStatus.textContent = 'Téléchargement...';
+    ytDlpStatus.textContent = window.i18n.t('binaries.downloading');
     ytDlpStatus.className = 'binary-item-status downloading';
     binaryDownloadProgress.style.display = 'block';
-    binaryDownloadProgressText.textContent = 'Téléchargement de yt-dlp...';
+    binaryDownloadProgressText.textContent = window.i18n.t('binaries.downloadingYtDlp');
     
     try {
         const result = await window.electronAPI.downloadYtDlpBinary();
         if (result.success) {
-            ytDlpStatus.textContent = 'Disponible';
+            ytDlpStatus.textContent = window.i18n.t('binaries.available');
             ytDlpStatus.className = 'binary-item-status available';
             downloadYtDlpBtn.style.display = 'none';
             ytDlpBinaryItem.style.display = 'none';
-            binaryDownloadProgressText.textContent = 'yt-dlp téléchargé avec succès!';
+            binaryDownloadProgressText.textContent = window.i18n.t('binaries.ytDlpDownloaded');
             setTimeout(() => {
                 binaryDownloadProgress.style.display = 'none';
                 // Check if both binaries are now available and close popup
@@ -277,14 +277,14 @@ downloadYtDlpBtn.addEventListener('click', async () => {
                 }
             }, 2000);
         } else {
-            ytDlpStatus.textContent = 'Erreur: ' + (result.error || 'Échec du téléchargement');
+            ytDlpStatus.textContent = window.i18n.t('binaries.errorPrefix') + ' ' + (result.error || window.i18n.t('binaries.downloadFailed'));
             ytDlpStatus.className = 'binary-item-status error';
             downloadYtDlpBtn.disabled = false;
             binaryDownloadProgress.style.display = 'none';
         }
     } catch (error) {
         console.error('Error downloading yt-dlp:', error);
-        ytDlpStatus.textContent = 'Erreur: ' + error.message;
+        ytDlpStatus.textContent = window.i18n.t('binaries.errorPrefix') + ' ' + error.message;
         ytDlpStatus.className = 'binary-item-status error';
         downloadYtDlpBtn.disabled = false;
         binaryDownloadProgress.style.display = 'none';
@@ -294,19 +294,19 @@ downloadYtDlpBtn.addEventListener('click', async () => {
 // Download ffmpeg binary
 downloadFfmpegBtn.addEventListener('click', async () => {
     downloadFfmpegBtn.disabled = true;
-    ffmpegStatus.textContent = 'Téléchargement...';
+    ffmpegStatus.textContent = window.i18n.t('binaries.downloading');
     ffmpegStatus.className = 'binary-item-status downloading';
     binaryDownloadProgress.style.display = 'block';
-    binaryDownloadProgressText.textContent = 'Téléchargement de FFmpeg...';
+    binaryDownloadProgressText.textContent = window.i18n.t('binaries.downloadingFfmpeg');
     
     try {
         const result = await window.electronAPI.downloadFfmpegBinary();
         if (result.success) {
-            ffmpegStatus.textContent = 'Disponible';
+            ffmpegStatus.textContent = window.i18n.t('binaries.available');
             ffmpegStatus.className = 'binary-item-status available';
             downloadFfmpegBtn.style.display = 'none';
             ffmpegBinaryItem.style.display = 'none';
-            binaryDownloadProgressText.textContent = 'FFmpeg téléchargé avec succès!';
+            binaryDownloadProgressText.textContent = window.i18n.t('binaries.ffmpegDownloaded');
             setTimeout(() => {
                 binaryDownloadProgress.style.display = 'none';
                 // Check if both binaries are now available and close popup
@@ -315,14 +315,14 @@ downloadFfmpegBtn.addEventListener('click', async () => {
                 }
             }, 2000);
         } else {
-            ffmpegStatus.textContent = 'Erreur: ' + (result.error || 'Échec du téléchargement');
+            ffmpegStatus.textContent = window.i18n.t('binaries.errorPrefix') + ' ' + (result.error || window.i18n.t('binaries.downloadFailed'));
             ffmpegStatus.className = 'binary-item-status error';
             downloadFfmpegBtn.disabled = false;
             binaryDownloadProgress.style.display = 'none';
         }
     } catch (error) {
         console.error('Error downloading ffmpeg:', error);
-        ffmpegStatus.textContent = 'Erreur: ' + error.message;
+        ffmpegStatus.textContent = window.i18n.t('binaries.errorPrefix') + ' ' + error.message;
         ffmpegStatus.className = 'binary-item-status error';
         downloadFfmpegBtn.disabled = false;
         binaryDownloadProgress.style.display = 'none';
@@ -493,18 +493,18 @@ setPathButton.addEventListener('click', async () => {
         }
     } catch (error) {
         console.error('Error selecting download path:', error);
-        displayUserMessage('Error setting download path', 'error'); 
+        displayUserMessage(window.i18n.t('download.errorSettingDownloadPath'), 'error'); 
     }
 });
 
 downloadButton.addEventListener('click', () => {
     if (!selectedVideoUrl) {
-        displayUserMessage('Veuillez sélectionner une vidéo d\'abord', 'error'); 
+        displayUserMessage(window.i18n.t('download.mustSelectVideo'), 'error'); 
         return;
     }
     
     if (!currentDownloadPath) {
-        displayUserMessage('Veuillez définir un emplacement de téléchargement', 'error');
+        displayUserMessage(window.i18n.t('download.mustSetDownloadPath'), 'error');
         settingsPopup.style.display = 'flex';
         return;
     }
@@ -518,7 +518,7 @@ downloadButton.addEventListener('click', () => {
     progressContainer.style.display = 'block';
     cancelDownloadBtn.style.display = 'inline-block'; // Show cancel button
     updateProgressBar(0); 
-    progressBarText.textContent = 'Préparation...'; 
+    progressBarText.textContent = window.i18n.t('download.preparing'); 
     displayUserMessage('', null);
 
     const selectedFormat = formatSelect.value;
@@ -587,13 +587,13 @@ downloadButton.addEventListener('click', () => {
         updateProgressBar(overallProgressPercent);
 
         if (isPreparing) {
-            progressBarText.textContent = 'Préparation...';
+            progressBarText.textContent = window.i18n.t('download.preparing');
         } else if (actualDownloadPercent >= 99.5) {
             // Once download is effectively 100%, show a finalization message 
             // before conversion-phase-started event updates it to "Conversion..."
-            progressBarText.textContent = 'Finalisation du téléchargement...';
+            progressBarText.textContent = window.i18n.t('download.finalizing');
         } else {
-            progressBarText.textContent = `Téléchargement: ${Math.round(actualDownloadPercent)}%`;
+            progressBarText.textContent = window.i18n.t('download.progress', { percent: Math.round(actualDownloadPercent) });
         }
     });
 
@@ -602,7 +602,7 @@ downloadButton.addEventListener('click', () => {
         conversionSimulationActive = true;
         console.log("Conversion phase started signal received by renderer.");
         // Text is now explicitly "Conversion en cours..."
-        progressBarText.textContent = 'Conversion en cours...';
+        progressBarText.textContent = window.i18n.t('download.converting');
         // Ensure bar is at least at the starting point of conversion visually
         updateProgressBar(DOWNLOAD_PROGRESS_SCALE * 100);
         simulateConversionProgress(DOWNLOAD_PROGRESS_SCALE * 100, 100, 3000); 
@@ -649,7 +649,7 @@ downloadButton.addEventListener('click', () => {
 
         selectedVideoContainer.style.display = 'none';
         completionNotification.style.display = 'block';
-        displayUserMessage('Téléchargement terminé avec succès !', 'complete');
+        displayUserMessage(window.i18n.t('download.completionNotification'), 'complete');
         isActivePlaylistDownload = false;
         lastPlaylistIndex = null;
         resetListeners();
@@ -702,9 +702,9 @@ searchQuery.addEventListener('keypress', (e) => {
 formatSelect.addEventListener('change', () => {
     const selectedFormat = formatSelect.value;
     if (selectedFormat === 'audio') {
-        downloadButton.textContent = "Télécharger l'audio";
+        downloadButton.textContent = window.i18n.t('download.audioButton');
     } else if (selectedFormat === 'video') {
-        downloadButton.textContent = "Télécharger la vidéo";
+        downloadButton.textContent = window.i18n.t('download.videoButton');
     }
 });
 
@@ -718,7 +718,7 @@ pasteClipboardButton.addEventListener('click', async () => {
         }
     } catch (error) {
         console.error('Failed to read clipboard:', error);
-        displayUserMessage('Impossible de lire le presse-papiers', 'error');
+        displayUserMessage(window.i18n.t('clipboard.errorRead'), 'error');
     }
 });
 
@@ -811,7 +811,7 @@ function updatePlaylistUI() {
 async function performSearch() {
     const query = searchQuery.value.trim();
     if (!query) {
-        displayUserMessage('Veuillez entrer une requête de recherche ou un lien YouTube', 'error');
+        displayUserMessage(window.i18n.t('search.invalidQuery'), 'error');
         return;
     }
 
@@ -824,7 +824,7 @@ async function performSearch() {
         selectedVideoUrl = normalizeYouTubeUrl(query);
         
         // Show loading state while fetching video info
-        selectedVideoTitle.textContent = 'Récupération des informations de la vidéo...';
+        selectedVideoTitle.textContent = window.i18n.t('playlist.fetchingVideoInfo');
         selectedVideoContainer.style.display = 'block';
         
         // Clear and hide search results and search container
@@ -857,7 +857,7 @@ async function performSearch() {
             if (videoInfo && videoInfo.title) {
                 selectedVideoTitle.textContent = `${videoInfo.title}`;
             } else {
-                selectedVideoTitle.textContent = 'Vidéo sélectionnée depuis le lien';
+                selectedVideoTitle.textContent = window.i18n.t('search.videoFromLink');
             }
             
             // Only show playlist/single options after we have attempted to retrieve video info
@@ -872,7 +872,7 @@ async function performSearch() {
                 return;
             }
             console.error('Error fetching video info:', error);
-            selectedVideoTitle.textContent = 'Vidéo sélectionnée depuis le lien';
+            selectedVideoTitle.textContent = window.i18n.t('search.videoFromLink');
             
             // Show download button even if title fetch failed
             downloadButton.style.display = 'inline-block';
@@ -883,14 +883,14 @@ async function performSearch() {
             videoInfoController = null;
         }
         
-        displayUserMessage('Lien YouTube détecté et sélectionné', 'success');
+        displayUserMessage(window.i18n.t('search.youtubeLinkDetected'), 'success');
         return;
     }
 
     // Show loading state for search
     searchButton.disabled = true;
-    searchButton.textContent = 'Recherche...';
-    searchResults.innerHTML = '<div class="search-result-item">Recherche en cours...</div>';
+    searchButton.textContent = window.i18n.t('search.searching');
+    searchResults.innerHTML = `<div class="search-result-item">${window.i18n.t('search.searching')}</div>`;
     searchResults.style.display = 'block';
     
     // Hide completion notification if it's showing
@@ -912,7 +912,7 @@ async function performSearch() {
         }
     } catch (error) {
         console.error('Search error:', error);
-        displayUserMessage('Erreur lors de la recherche', 'error');
+        displayUserMessage(window.i18n.t('search.error'), 'error');
         searchResults.style.display = 'none';
     } finally {
         searchButton.disabled = false;
@@ -1216,14 +1216,14 @@ function initAutoUpdateHandling() {
                 updateReadyActions.style.display = 'none';
             }
             if (updateProgressText) {
-                updateProgressText.textContent = 'Préparation du téléchargement de la mise à jour...';
+                updateProgressText.textContent = window.i18n.t('update.preparingDownload');
             }
 
             try {
                 await window.electronAPI.startUpdateDownload();
             } catch (error) {
                 console.error('Failed to start update download:', error);
-                displayUserMessage('Erreur lors du démarrage du téléchargement de la mise à jour', 'error');
+                displayUserMessage(window.i18n.t('update.errorStartingDownload'), 'error');
                 closeUpdatePopupInternal();
             }
         });
@@ -1235,7 +1235,7 @@ function initAutoUpdateHandling() {
                 await window.electronAPI.installUpdateNow();
             } catch (error) {
                 console.error('Failed to install update:', error);
-                displayUserMessage('Erreur lors de l’installation de la mise à jour', 'error');
+                displayUserMessage(window.i18n.t('update.errorInstalling'), 'error');
             }
         });
     }
@@ -1273,7 +1273,7 @@ function initAutoUpdateHandling() {
         }
 
         if (updateMessage) {
-            updateMessage.textContent = 'Une nouvelle version de MyTube est disponible.';
+            updateMessage.textContent = window.i18n.t('update.availableMessage');
         }
 
         if (updateInitialActions) {
@@ -1304,15 +1304,43 @@ function initAutoUpdateHandling() {
         if (progress && typeof progress.percent === 'number') {
             percent = Math.round(progress.percent);
         }
-        let text = `Téléchargement de la mise à jour: ${percent}%`;
-        if (progress && typeof progress.transferred === 'number' && typeof progress.total === 'number') {
+        
+        const unit = window.i18n.t('update.sizeUnit');
+        let text;
+        
+        if (progress && typeof progress.transferred === 'number' && typeof progress.total === 'number' && typeof progress.bytesPerSecond === 'number') {
+            // Full progress with size and speed
             const transferredMb = (progress.transferred / 1024 / 1024).toFixed(1);
             const totalMb = (progress.total / 1024 / 1024).toFixed(1);
-            text += ` (${transferredMb}/${totalMb} Mo)`;
-        }
-        if (progress && typeof progress.bytesPerSecond === 'number') {
             const speedMb = (progress.bytesPerSecond / 1024 / 1024).toFixed(2);
-            text += ` • ${speedMb} Mo/s`;
+            text = window.i18n.t('update.downloadProgressFull', {
+                percent: percent,
+                transferred: transferredMb,
+                total: totalMb,
+                speed: speedMb,
+                unit: unit
+            });
+        } else if (progress && typeof progress.transferred === 'number' && typeof progress.total === 'number') {
+            // Progress with size only
+            const transferredMb = (progress.transferred / 1024 / 1024).toFixed(1);
+            const totalMb = (progress.total / 1024 / 1024).toFixed(1);
+            text = window.i18n.t('update.downloadProgressWithSize', {
+                percent: percent,
+                transferred: transferredMb,
+                total: totalMb,
+                unit: unit
+            });
+        } else if (progress && typeof progress.bytesPerSecond === 'number') {
+            // Progress with speed only
+            const speedMb = (progress.bytesPerSecond / 1024 / 1024).toFixed(2);
+            text = window.i18n.t('update.downloadProgressWithSpeed', {
+                percent: percent,
+                speed: speedMb,
+                unit: unit
+            });
+        } else {
+            // Basic progress only
+            text = window.i18n.t('update.downloadProgress', { percent: percent });
         }
 
         updateProgressText.textContent = text;
@@ -1338,7 +1366,7 @@ function initAutoUpdateHandling() {
             updateReadyActions.style.display = 'flex';
         }
         if (updateMessage) {
-            updateMessage.textContent = 'La mise à jour a été téléchargée. Redémarrer l’application pour appliquer les changements ?';
+            updateMessage.textContent = window.i18n.t('update.downloadCompletedMessage');
         }
     });
 
@@ -1381,11 +1409,11 @@ cancelDownloadBtn.addEventListener('click', async () => {
             // Reset UI back to search screen
             resetUI();
         } else {
-            displayUserMessage('Impossible d\'annuler le téléchargement', 'error');
+            displayUserMessage(window.i18n.t('download.cannotCancel'), 'error');
         }
     } catch (error) {
         console.error('Error cancelling download:', error);
-        displayUserMessage('Erreur lors de l\'annulation', 'error');
+        displayUserMessage(window.i18n.t('download.cancellationError'), 'error');
     }
 });
 
@@ -1422,12 +1450,12 @@ if (playlistSingleBtn && playlistFullBtn) {
         // without re-fetching from yt-dlp.
         if (currentPlaylistItems && currentPlaylistItems.length > 0) {
             playlistDetails.style.display = 'block';
-            playlistDetailsHeader.textContent = `Playlist complète (${currentPlaylistItems.length} vidéos)`;
+            playlistDetailsHeader.textContent = window.i18n.t('playlist.fullWithCount', { count: currentPlaylistItems.length });
             return;
         }
 
         playlistDetails.style.display = 'block';
-        playlistDetailsHeader.textContent = 'Chargement de la playlist...';
+        playlistDetailsHeader.textContent = window.i18n.t('playlist.loading');
         playlistItemsList.innerHTML = '';
         currentPlaylistItems = [];
 
@@ -1435,28 +1463,28 @@ if (playlistSingleBtn && playlistFullBtn) {
             const info = await window.electronAPI.getPlaylistInfo(originalVideoUrl || selectedVideoUrl);
             if (info && Array.isArray(info.items) && info.items.length > 0) {
                 currentPlaylistItems = info.items;
-                playlistDetailsHeader.textContent = `Playlist complète (${info.items.length} vidéos)`;
+                playlistDetailsHeader.textContent = window.i18n.t('playlist.fullWithCount', { count: info.items.length });
                 playlistItemsList.innerHTML = '';
 
                 info.items.forEach((item, index) => {
                     const li = document.createElement('li');
                     li.className = 'playlist-item';
-                    li.textContent = `${index + 1}. ${item.title || 'Vidéo sans titre'}`;
+                    li.textContent = `${index + 1}. ${item.title || window.i18n.t('playlist.untitledVideo')}`;
                     playlistItemsList.appendChild(li);
                 });
             } else if (info && info.error) {
-                playlistDetailsHeader.textContent = 'Impossible de récupérer la playlist';
+                playlistDetailsHeader.textContent = window.i18n.t('playlist.cannotRetrieve');
                 playlistItemsList.innerHTML = '';
                 displayUserMessage(info.error, 'error');
             } else {
-                playlistDetailsHeader.textContent = 'Aucun élément dans cette playlist';
+                playlistDetailsHeader.textContent = window.i18n.t('playlist.none');
                 playlistItemsList.innerHTML = '';
             }
         } catch (error) {
             console.error('Error fetching playlist info:', error);
-            playlistDetailsHeader.textContent = 'Erreur lors de la récupération de la playlist';
+            playlistDetailsHeader.textContent = window.i18n.t('playlist.errorRetrieving');
             playlistItemsList.innerHTML = '';
-            displayUserMessage('Erreur lors de la récupération de la playlist', 'error');
+            displayUserMessage(window.i18n.t('playlist.errorRetrieving'), 'error');
         }
     });
 }

@@ -21,10 +21,15 @@
       "ytDlpName": "yt-dlp",
       "ffmpegName": "FFmpeg",
       "notAvailable": "Non disponible",
+      "available": "Disponible",
       "downloading": "Téléchargement...",
+      "downloadingYtDlp": "Téléchargement de yt-dlp...",
+      "downloadingFfmpeg": "Téléchargement de FFmpeg...",
       "ytDlpDownloaded": "yt-dlp téléchargé avec succès!",
       "ffmpegDownloaded": "FFmpeg téléchargé avec succès!",
-      "genericDownloading": "Téléchargement en cours..."
+      "genericDownloading": "Téléchargement en cours...",
+      "errorPrefix": "Erreur:",
+      "downloadFailed": "Échec du téléchargement"
     },
     "update": {
       "title": "Mise à jour disponible",
@@ -38,26 +43,38 @@
       "restartLaterButton": "Plus tard",
       "preparingDownload": "Préparation du téléchargement de la mise à jour...",
       "downloadProgress": "Téléchargement de la mise à jour: {{percent}}%",
-      "downloadCompletedMessage": "La mise à jour a été téléchargée. Redémarrer l’application pour appliquer les changements ?",
-      "errorChecking": "Erreur lors de la vérification des mises à jour."
+      "downloadProgressWithSize": "Téléchargement de la mise à jour: {{percent}}% ({{transferred}}/{{total}} {{unit}})",
+      "downloadProgressWithSpeed": "Téléchargement de la mise à jour: {{percent}}% • {{speed}} {{unit}}/s",
+      "downloadProgressFull": "Téléchargement de la mise à jour: {{percent}}% ({{transferred}}/{{total}} {{unit}}) • {{speed}} {{unit}}/s",
+      "downloadCompletedMessage": "La mise à jour a été téléchargée. Redémarrer l'application pour appliquer les changements ?",
+      "errorChecking": "Erreur lors de la vérification des mises à jour.",
+      "errorStartingDownload": "Erreur lors du démarrage du téléchargement de la mise à jour",
+      "errorInstalling": "Erreur lors de l'installation de la mise à jour",
+      "sizeUnit": "Mo"
     },
     "search": {
       "placeholder": "Rechercher une vidéo ou coller un lien YouTube...",
       "noResults": "Aucun résultat trouvé",
       "searching": "Recherche en cours...",
       "error": "Erreur lors de la recherche",
-      "invalidQuery": "Veuillez entrer une requête de recherche ou un lien YouTube"
+      "invalidQuery": "Veuillez entrer une requête de recherche ou un lien YouTube",
+      "fetchingVideoInfo": "Récupération des informations de la vidéo...",
+      "videoFromLink": "Vidéo sélectionnée depuis le lien",
+      "youtubeLinkDetected": "Lien YouTube détecté et sélectionné"
     },
     "playlist": {
       "selectedLabel": "Vidéo sélectionnée :",
       "isPlaylistLabel": "Cette URL est une playlist. Que voulez-vous télécharger ?",
       "singleButton": "Vidéo actuelle seulement",
       "fullButton": "Playlist complète",
+      "fullWithCount": "Playlist complète ({{count}} vidéos)",
       "loading": "Chargement de la playlist...",
       "cannotRetrieve": "Impossible de récupérer la playlist",
+      "errorRetrieving": "Erreur lors de la récupération de la playlist",
       "none": "Aucun élément dans cette playlist",
       "untitledVideo": "Vidéo sans titre",
-      "timeoutError": "La récupération des informations de la vidéo est trop longue ou a échoué."
+      "timeoutError": "La récupération des informations de la vidéo est trop longue ou a échoué.",
+      "fetchingVideoInfo": "Récupération des informations de la vidéo..."
     },
     "download": {
       "formatLabel": "Format :",
