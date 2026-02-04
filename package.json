@@ -23,7 +23,7 @@
   "license": "ISC",
   "devDependencies": {
     "electron": "^35.7.5",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^26.7.0"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
