@@ -36,6 +36,7 @@ jobs:
           name: windows-build
           path: |
             dist/*.exe
+            dist/*.yml
           retention-days: 5
 
   build-linux:
@@ -63,6 +64,7 @@ jobs:
           path: |
             dist/*.deb
             dist/*.AppImage
+            dist/*.yml
           retention-days: 5
 
   release:
