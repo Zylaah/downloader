@@ -1365,8 +1365,20 @@ function initAutoUpdateHandling() {
         if (updateReadyActions) {
             updateReadyActions.style.display = 'flex';
         }
-        if (updateMessage) {
-            updateMessage.textContent = window.i18n.t('update.downloadCompletedMessage');
+
+        // On Linux DEB/non-AppImage installs, auto-install isn't possible.
+        // Change button text to indicate we'll open the download page instead.
+        if (info && info.canAutoInstall === false) {
+            if (updateRestartNowBtn) {
+                updateRestartNowBtn.textContent = window.i18n.t('update.openDownloadPage', { defaultValue: 'Télécharger la mise à jour' });
+            }
+            if (updateMessage) {
+                updateMessage.textContent = window.i18n.t('update.manualInstallMessage', { defaultValue: 'La mise à jour sera disponible sur la page de téléchargement.' });
+            }
+        } else {
+            if (updateMessage) {
+                updateMessage.textContent = window.i18n.t('update.downloadCompletedMessage');
+            }
         }
     });
 

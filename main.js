@@ -175,9 +175,12 @@ function setupAutoUpdater(mainWindow) {
 
   autoUpdater.on('update-downloaded', (info) => {
     console.log('[AutoUpdate] Update downloaded:', info.version);
+    const isLinux = os.platform() === 'linux';
+    const isAppImage = !!process.env.APPIMAGE;
     sendToRendererSafe('update-downloaded', {
       version: info.version,
-      releaseNotes: info.releaseNotes || ''
+      releaseNotes: info.releaseNotes || '',
+      canAutoInstall: !isLinux || isAppImage
     });
   });
 
@@ -226,9 +229,21 @@ function setupAutoUpdater(mainWindow) {
   });
 
   ipcMain.handle('update-install-now', () => {
+    // On Linux, auto-install only works reliably with AppImage.
+    // For DEB/other installs, open the release page instead.
+    const isLinux = os.platform() === 'linux';
+    const isAppImage = !!process.env.APPIMAGE;
+
+    if (isLinux && !isAppImage) {
+      console.log('[AutoUpdate] Linux non-AppImage install detected, opening release page...');
+      const { shell } = require('electron');
+      shell.openExternal('https://github.com/Zylaah/downloader/releases/latest');
+      return { success: true, action: 'opened-release-page' };
+    }
+
     console.log('[AutoUpdate] Installing update and quitting...');
     autoUpdater.quitAndInstall();
-    return { success: true };
+    return { success: true, action: 'quit-and-install' };
   });
 }
 
