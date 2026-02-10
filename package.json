@@ -64,10 +64,12 @@
       "icon": "build/icon.png",
       "category": "AudioVideo",
       "desktop": {
-        "Name": "MyTube",
-        "Comment": "YouTube video and audio downloader",
-        "Keywords": "youtube;downloader;video;audio;mp3;mp4",
-        "StartupWMClass": "mytube"
+        "entry": {
+          "Name": "MyTube",
+          "Comment": "YouTube video and audio downloader",
+          "Keywords": "youtube;downloader;video;audio;mp3;mp4",
+          "StartupWMClass": "mytube"
+        }
       }
     },
     "asarUnpack": [
