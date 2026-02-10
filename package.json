@@ -45,7 +45,8 @@
       "**/*",
       "!.flatpak-builder{,/**}",
       "!dist{,/**}",
-      "!builddir{,/**}"
+      "!builddir{,/**}",
+      "!docs{,/**}"
     ],
     "win": {
       "target": "nsis",

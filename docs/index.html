@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyTube - Téléchargeur YouTube</title>
+    <meta name="description" content="MyTube - Téléchargez vos vidéos et musiques YouTube en MP3 et MP4. Disponible sur Windows, Linux et ChromeOS.">
+    <link rel="icon" type="image/png" href="icon.png">
+    <style>
+        :root {
+            --primary: #d9230f;
+            --primary-hover: #b01d0c;
+            --primary-light: rgba(217, 35, 15, 0.08);
+            --dark: #111111;
+            --gray-dark: #1a1a1a;
+            --gray: #666666;
+            --gray-light: #e5e7eb;
+            --light: #f9fafb;
+            --white: #ffffff;
+            --radius: 12px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--gray-dark);
+            background: var(--white);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--gray-light);
+            z-index: 100;
+            padding: 0 2rem;
+        }
+
+        .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--gray-dark);
+            text-decoration: none;
+        }
+
+        .nav-brand img {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--gray);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-links .github-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-links .github-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            padding: 160px 2rem 100px;
+            text-align: center;
+            background: linear-gradient(180deg, var(--white) 0%, var(--light) 100%);
+        }
+
+        .hero-logo-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .hero-logo {
+            width: 96px;
+            height: 96px;
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(217, 35, 15, 0.2);
+            margin-bottom: 0.75rem;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 4px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--gray);
+            max-width: 520px;
+            margin: 0 auto 2.5rem;
+        }
+
+        /* ── DOWNLOAD BUTTONS ── */
+        .download-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 28px;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--white);
+            box-shadow: 0 4px 14px rgba(217, 35, 15, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 6px 20px rgba(217, 35, 15, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--gray-dark);
+            border: 1.5px solid var(--gray-light);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary .file-size {
+            font-size: 0.8rem;
+            color: var(--gray);
+            font-weight: 400;
+        }
+
+        .detected-os {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-top: 0.5rem;
+        }
+
+        /* ── FEATURES ── */
+        .features {
+            padding: 100px 2rem;
+            background: var(--white);
+        }
+
+        .features-inner {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 3.5rem;
+            color: var(--dark);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--gray-light);
+            transition: all 0.25s ease;
+        }
+
+        .feature-card:hover {
+            border-color: transparent;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--primary-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.2rem;
+        }
+
+        .feature-icon svg {
+            width: 22px;
+            height: 22px;
+            color: var(--primary);
+        }
+
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--gray);
+            line-height: 1.5;
+        }
+
+        /* ── CHROMEOS ── */
+        .chromeos {
+            padding: 100px 2rem;
+            background: var(--light);
+        }
+
+        .chromeos-inner {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .chromeos h2 {
+            text-align: center;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .chromeos > .subtitle {
+            text-align: center;
+            color: var(--gray);
+            margin-bottom: 3rem;
+            font-size: 1.05rem;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .step {
+            display: flex;
+            gap: 1.25rem;
+            align-items: flex-start;
+            padding: 1.5rem;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--gray-light);
+        }
+
+        .step-number {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            background: var(--primary);
+            color: var(--white);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .step-content h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.3rem;
+            color: var(--dark);
+        }
+
+        .step-content p {
+            font-size: 0.9rem;
+            color: var(--gray);
+            line-height: 1.5;
+        }
+
+        .step-content code {
+            background: var(--light);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--primary);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            padding: 3rem 2rem;
+            text-align: center;
+            border-top: 1px solid var(--gray-light);
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── LOADING STATE ── */
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1.05rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .download-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 320px;
+                justify-content: center;
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <div class="nav-inner">
+            <a href="#" class="nav-brand">
+                <img src="icon.png" alt="MyTube">
+                MyTube
+            </a>
+            <div class="nav-links">
+                <a href="#features">Fonctionnalités</a>
+                <a href="#chromeos">ChromeOS</a>
+                <a href="https://github.com/Zylaah/downloader" target="_blank" class="github-link">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-logo-wrapper">
+            <img src="icon.png" alt="MyTube" class="hero-logo">
+            <div class="version-badge" id="versionBadge">Chargement...</div>
+        </div>
+        <h1>MyTube</h1>
+        <p>Téléchargez vos vidéos et musiques YouTube en MP3 ou MP4 en quelques clics.</p>
+
+        <div class="download-buttons" id="downloadButtons">
+            <a href="#" class="btn btn-primary loading" id="btn-windows">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+                Windows
+            </a>
+            <a href="#" class="btn btn-secondary loading" id="btn-deb">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                Linux (.deb)
+            </a>
+            <a href="#" class="btn btn-secondary loading" id="btn-appimage">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                Linux (.AppImage)
+            </a>
+        </div>
+        <p class="detected-os" id="detectedOS"></p>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features" id="features">
+        <div class="features-inner">
+            <h2>Tout ce dont vous avez besoin</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    </div>
+                    <h3>Recherche intégrée</h3>
+                    <p>Recherchez directement vos vidéos YouTube depuis l'application, sans ouvrir votre navigateur.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                    </div>
+                    <h3>MP3 & MP4</h3>
+                    <p>Téléchargez en audio (MP3 haute qualité) ou en vidéo (MP4) selon vos besoins.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V19A2 2 0 0119 21H5A2 2 0 013 19V15"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </div>
+                    <h3>Playlists complètes</h3>
+                    <p>Téléchargez une vidéo unique ou une playlist entière en un seul clic.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3>Sécurisé</h3>
+                    <p>Application open source, sans publicité, sans tracking. Votre vie privée est respectée.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                    <h3>Multiplateforme</h3>
+                    <p>Disponible sur Windows, Linux et ChromeOS. La même expérience partout.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                    <h3>Mises à jour auto</h3>
+                    <p>Recevez automatiquement les dernières versions sans rien faire.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHROMEOS -->
+    <section class="chromeos" id="chromeos">
+        <div class="chromeos-inner">
+            <h2>Installer sur ChromeOS</h2>
+            <p class="subtitle">MyTube fonctionne sur ChromeOS via l'environnement Linux (Crostini).</p>
+
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Activer Linux</h3>
+                        <p>Ouvrez <strong>Paramètres &rarr; Avancés &rarr; Développeurs &rarr; Environnement de développement Linux</strong> et cliquez sur <strong>Activer</strong>.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Télécharger MyTube</h3>
+                        <p>Téléchargez le fichier <strong>.deb</strong> ou <strong>.AppImage</strong> depuis les boutons ci-dessus.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Installer</h3>
+                        <p><strong>Option DEB :</strong> Double-cliquez sur le fichier .deb ou lancez <code>sudo dpkg -i MyTube_*.deb</code> dans le terminal Linux.</p>
+                        <p style="margin-top: 0.5rem;"><strong>Option AppImage :</strong> Rendez-le exécutable avec <code>chmod +x MyTube-*.AppImage</code> puis lancez-le.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h3>C'est prêt !</h3>
+                        <p>MyTube apparaît dans votre lanceur d'applications. Les fichiers téléchargés seront accessibles directement dans l'app <strong>Fichiers</strong> de ChromeOS.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>MyTube est un projet open source &mdash; <a href="https://github.com/Zylaah/downloader" target="_blank">Code source sur GitHub</a></p>
+    </footer>
+
+    <script>
+        const REPO = 'Zylaah/downloader';
+
+        // Detect user OS
+        function detectOS() {
+            const ua = navigator.userAgent.toLowerCase();
+            if (ua.includes('cros')) return 'chromeos';
+            if (ua.includes('win')) return 'windows';
+            if (ua.includes('linux')) return 'linux';
+            if (ua.includes('mac')) return 'mac';
+            return 'unknown';
+        }
+
+        // Fetch latest release from GitHub API
+        async function loadRelease() {
+            try {
+                const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
+                if (!res.ok) throw new Error('API error');
+                const release = await res.json();
+
+                const version = release.tag_name.replace(/^v/, '');
+                document.getElementById('versionBadge').textContent = `v${version}`;
+
+                const assets = release.assets || [];
+
+                // Find download URLs
+                const exeAsset = assets.find(a => a.name.endsWith('.exe'));
+                const debAsset = assets.find(a => a.name.endsWith('.deb'));
+                const appImageAsset = assets.find(a => a.name.endsWith('.AppImage'));
+
+                const btnWin = document.getElementById('btn-windows');
+                const btnDeb = document.getElementById('btn-deb');
+                const btnAppImage = document.getElementById('btn-appimage');
+
+                if (exeAsset) {
+                    btnWin.href = exeAsset.browser_download_url;
+                    btnWin.classList.remove('loading');
+                }
+
+                if (debAsset) {
+                    btnDeb.href = debAsset.browser_download_url;
+                    btnDeb.classList.remove('loading');
+                }
+
+                if (appImageAsset) {
+                    btnAppImage.href = appImageAsset.browser_download_url;
+                    btnAppImage.classList.remove('loading');
+                }
+
+                // Highlight the right button based on detected OS
+                highlightOS();
+
+            } catch (err) {
+                console.error('Failed to fetch release:', err);
+                document.getElementById('versionBadge').textContent = '';
+
+                // Fallback: link to releases page
+                const fallbackUrl = `https://github.com/${REPO}/releases/latest`;
+                document.getElementById('btn-windows').href = fallbackUrl;
+                document.getElementById('btn-deb').href = fallbackUrl;
+                document.getElementById('btn-appimage').href = fallbackUrl;
+
+                document.querySelectorAll('.btn.loading').forEach(b => b.classList.remove('loading'));
+            }
+        }
+
+        function highlightOS() {
+            const os = detectOS();
+            const btnWin = document.getElementById('btn-windows');
+            const btnDeb = document.getElementById('btn-deb');
+            const btnAppImage = document.getElementById('btn-appimage');
+            const detectedEl = document.getElementById('detectedOS');
+
+            // Reset all to secondary
+            [btnWin, btnDeb, btnAppImage].forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-secondary');
+            });
+
+            if (os === 'windows') {
+                btnWin.classList.remove('btn-secondary');
+                btnWin.classList.add('btn-primary');
+                detectedEl.textContent = 'Windows détecté — le bon téléchargement est mis en avant.';
+            } else if (os === 'chromeos') {
+                btnDeb.classList.remove('btn-secondary');
+                btnDeb.classList.add('btn-primary');
+                detectedEl.innerHTML = 'ChromeOS détecté — <a href="#chromeos" style="color: var(--primary);">voir les instructions d\'installation</a>.';
+            } else if (os === 'linux') {
+                btnAppImage.classList.remove('btn-secondary');
+                btnAppImage.classList.add('btn-primary');
+                detectedEl.textContent = 'Linux détecté — le bon téléchargement est mis en avant.';
+            }
+        }
+
+        loadRelease();
+    </script>
+</body>
+</html>
