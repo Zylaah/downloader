@@ -644,15 +644,15 @@
             if (os === 'windows') {
                 btnWin.classList.remove('btn-secondary');
                 btnWin.classList.add('btn-primary');
-                detectedEl.textContent = 'Windows détecté — le bon téléchargement est mis en avant.';
+                detectedEl.textContent = 'Windows détecté';
             } else if (os === 'chromeos') {
                 btnDeb.classList.remove('btn-secondary');
                 btnDeb.classList.add('btn-primary');
-                detectedEl.innerHTML = 'ChromeOS détecté — <a href="#chromeos" style="color: var(--primary);">voir les instructions d\'installation</a>.';
+                detectedEl.innerHTML = 'ChromeOS détecté — <a href="#chromeos" style="color: var(--primary);">voir les instructions d\'installation</a>';
             } else if (os === 'linux') {
                 btnAppImage.classList.remove('btn-secondary');
                 btnAppImage.classList.add('btn-primary');
-                detectedEl.textContent = 'Linux détecté — le bon téléchargement est mis en avant.';
+                detectedEl.textContent = 'Linux détecté';
             }
         }
 
