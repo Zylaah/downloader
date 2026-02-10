@@ -62,6 +62,59 @@ function translate(key, options = {}) {
   });
 }
 
+// ChromeOS (Crostini) detection
+// Crostini exposes the ChromeOS filesystem at /mnt/chromeos/
+// We also check /etc/lsb-release for CHROMEOS identifiers as a fallback
+let _isChromeOS = null;
+function isChromeOS() {
+  if (_isChromeOS !== null) return _isChromeOS;
+  
+  if (os.platform() !== 'linux') {
+    _isChromeOS = false;
+    return false;
+  }
+  
+  try {
+    // Primary check: Crostini mounts ChromeOS filesystem here
+    if (fs.existsSync('/mnt/chromeos/')) {
+      _isChromeOS = true;
+      console.log('[Platform] ChromeOS (Crostini) detected via /mnt/chromeos/');
+      return true;
+    }
+  } catch (e) { /* ignore */ }
+  
+  try {
+    // Secondary check: /etc/lsb-release may contain ChromeOS identifiers
+    const lsbRelease = fs.readFileSync('/etc/lsb-release', 'utf8');
+    if (lsbRelease.includes('CHROMEOS') || lsbRelease.includes('chromeos')) {
+      _isChromeOS = true;
+      console.log('[Platform] ChromeOS detected via /etc/lsb-release');
+      return true;
+    }
+  } catch (e) { /* ignore - file may not exist */ }
+  
+  _isChromeOS = false;
+  return false;
+}
+
+// Get the ChromeOS shared Downloads path if available
+function getChromeOSDownloadsPath() {
+  if (!isChromeOS()) return null;
+  
+  const chromeOSDownloads = '/mnt/chromeos/MyFiles/Downloads';
+  try {
+    if (fs.existsSync(chromeOSDownloads)) {
+      fs.accessSync(chromeOSDownloads, fs.constants.W_OK);
+      console.log('[Platform] ChromeOS shared Downloads folder accessible at:', chromeOSDownloads);
+      return chromeOSDownloads;
+    }
+  } catch (e) {
+    console.warn('[Platform] ChromeOS Downloads folder not writable:', e.message);
+  }
+  
+  return null;
+}
+
 // Toggle verbose download logging (progress, yt-dlp events, etc.)
 const ENABLE_DOWNLOAD_LOGS = false;
 
@@ -231,7 +284,10 @@ async function ensureFfmpegBinary() {
   
   try {
     const { execSync } = require('child_process');
-    const systemFfmpeg = execSync('which ffmpeg', { encoding: 'utf8' }).trim();
+    // Use 'command -v' (POSIX-compliant) instead of 'which' for better
+    // compatibility across Linux distributions, including ChromeOS Crostini
+    const cmd = os.platform() === 'win32' ? 'where ffmpeg' : 'command -v ffmpeg';
+    const systemFfmpeg = execSync(cmd, { encoding: 'utf8' }).trim();
     if (systemFfmpeg && fs.existsSync(systemFfmpeg)) {
       console.log('[Main Process] Using system ffmpeg at:', systemFfmpeg);
       return systemFfmpeg;
@@ -919,9 +975,16 @@ ipcMain.handle('get-default-download-path', async () => {
     } catch (err) {
       console.warn(`Saved download path ${savedPath} is not writable or accessible, falling back to default.`);
       store.delete('downloadPath'); // Remove invalid path
-      return app.getPath('downloads');
     }
   }
+
+  // On ChromeOS (Crostini), prefer the shared Downloads folder so files
+  // are visible directly in the ChromeOS Files app
+  const chromeOSPath = getChromeOSDownloadsPath();
+  if (chromeOSPath) {
+    return chromeOSPath;
+  }
+
   return app.getPath('downloads');
 });
 
@@ -965,6 +1028,16 @@ ipcMain.handle('get-translation-bundle', (_event, lang) => {
 // IPC handler to update language from renderer
 ipcMain.on('set-app-language', (_event, lang) => {
   setStoredLanguage(lang);
+});
+
+// IPC handler to get platform info (used by renderer for UI adaptations)
+ipcMain.handle('get-platform-info', () => {
+  return {
+    platform: os.platform(),
+    arch: os.arch(),
+    isChromeOS: isChromeOS(),
+    chromeOSDownloadsAvailable: !!getChromeOSDownloadsPath()
+  };
 });
 
 function createWindow () {

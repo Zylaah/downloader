@@ -8,6 +8,8 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
+    "build:linux:appimage": "electron-builder --linux AppImage",
+    "build:chromeos": "electron-builder --linux deb AppImage",
     "build:all": "electron-builder --win --linux",
     "release:win": "electron-builder --win --publish always",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -55,7 +57,8 @@
     },
     "linux": {
       "target": [
-        "deb"
+        "deb",
+        "AppImage"
       ],
       "maintainer": "Bxthesda <lucien.schaeffer@hotmail.com>",
       "icon": "build/icon.png",

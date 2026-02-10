@@ -100,6 +100,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadYtDlpBinary: () => ipcRenderer.invoke('download-yt-dlp-binary'),
   downloadFfmpegBinary: () => ipcRenderer.invoke('download-ffmpeg-binary'),
   cancelDownload: () => ipcRenderer.invoke('cancel-download'),
+  getPlatformInfo: () => ipcRenderer.invoke('get-platform-info'),
   minimizeWindow: () => ipcRenderer.send('minimize-window'),
   maximizeRestoreWindow: () => ipcRenderer.send('maximize-restore-window'),
   closeWindow: () => ipcRenderer.send('close-window'),
