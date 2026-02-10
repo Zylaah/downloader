@@ -237,7 +237,7 @@ function setupAutoUpdater(mainWindow) {
     if (isLinux && !isAppImage) {
       console.log('[AutoUpdate] Linux non-AppImage install detected, opening release page...');
       const { shell } = require('electron');
-      shell.openExternal('https://github.com/Zylaah/downloader/releases/latest');
+      shell.openExternal('https://zylaah.github.io/downloader/');
       return { success: true, action: 'opened-release-page' };
     }
 
