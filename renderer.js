@@ -9,6 +9,7 @@ const progressBarText = document.getElementById('progressBarText');
 const searchQuery = document.getElementById('searchQuery');
 const searchButton = document.getElementById('searchButton');
 const searchResults = document.getElementById('searchResults');
+const clearSearchButton = document.getElementById('clearSearchButton');
 const completionNotification = document.getElementById('completionNotification');
 const downloadMoreBtn = document.getElementById('downloadMoreBtn');
 const settingsButton = document.getElementById('settingsButton');
@@ -698,6 +699,26 @@ searchQuery.addEventListener('keypress', (e) => {
     }
 });
 
+// Show/hide clear button based on input content
+searchQuery.addEventListener('input', () => {
+    if (searchQuery.value.length > 0) {
+        clearSearchButton.classList.add('visible');
+    } else {
+        clearSearchButton.classList.remove('visible');
+    }
+});
+
+// Clear search button: reset input and results
+clearSearchButton.addEventListener('click', () => {
+    searchQuery.value = '';
+    clearSearchButton.classList.remove('visible');
+    searchResults.innerHTML = '';
+    searchResults.style.display = 'none';
+    allSearchResults = [];
+    renderedResultCount = 0;
+    searchQuery.focus();
+});
+
 // Format selection change handler
 formatSelect.addEventListener('change', () => {
     const selectedFormat = formatSelect.value;
@@ -897,7 +918,7 @@ async function performSearch() {
     completionNotification.style.display = 'none';
 
     try {
-        const result = await window.electronAPI.searchYoutube(query, 10);
+        const result = await window.electronAPI.searchYoutube(query, 30);
         
         if (result.error) {
             displayUserMessage(result.error, 'error');
@@ -920,19 +941,51 @@ async function performSearch() {
     }
 }
 
-// Function to display search results
+// Search results state for progressive rendering (infinite scroll)
+let allSearchResults = [];
+let renderedResultCount = 0;
+const RESULTS_PER_BATCH = 10;
+let isLoadingMoreResults = false;
+
+// Function to display search results (with progressive rendering)
 function displaySearchResults(results) {
     searchResults.innerHTML = '';
+    allSearchResults = results;
+    renderedResultCount = 0;
     
-    results.forEach(video => {
+    // Render first batch
+    renderNextBatch();
+    
+    searchResults.style.display = 'block';
+}
+
+// Render the next batch of search results
+function renderNextBatch() {
+    if (renderedResultCount >= allSearchResults.length) return;
+    
+    const end = Math.min(renderedResultCount + RESULTS_PER_BATCH, allSearchResults.length);
+    
+    // Remove the loader if present
+    const existingLoader = searchResults.querySelector('.search-results-loader');
+    if (existingLoader) existingLoader.remove();
+    
+    for (let i = renderedResultCount; i < end; i++) {
+        const video = allSearchResults[i];
         const normalizedUrl = normalizeYouTubeUrl(video.url || '');
         const resultItem = document.createElement('div');
         resultItem.className = 'search-result-item';
         
+        const thumbnailSrc = video.thumbnail || '';
+        
         resultItem.innerHTML = `
+            ${thumbnailSrc ? `<div class="search-result-thumbnail">
+                <img src="${thumbnailSrc}" alt="" loading="lazy" onerror="this.parentElement.classList.add('thumbnail-error')">
+                <div class="search-result-duration-badge">${video.duration}</div>
+            </div>` : `<div class="search-result-thumbnail thumbnail-error">
+                <div class="search-result-duration-badge">${video.duration}</div>
+            </div>`}
             <div class="search-result-info">
                 <div class="search-result-title">${video.title}</div>
-                <div class="search-result-duration">${video.duration}</div>
             </div>
         `;
         
@@ -966,10 +1019,36 @@ function displaySearchResults(results) {
         });
         
         searchResults.appendChild(resultItem);
-    });
+    }
     
-    searchResults.style.display = 'block';
+    renderedResultCount = end;
+    
+    // Show a subtle loader if there are more results to render
+    if (renderedResultCount < allSearchResults.length) {
+        const loader = document.createElement('div');
+        loader.className = 'search-results-loader';
+        loader.textContent = '...';
+        searchResults.appendChild(loader);
+    }
+    
+    isLoadingMoreResults = false;
 }
+
+// Infinite scroll: load more results when scrolling near the bottom
+searchResults.addEventListener('scroll', () => {
+    if (isLoadingMoreResults) return;
+    if (renderedResultCount >= allSearchResults.length) return;
+    
+    const scrollTop = searchResults.scrollTop;
+    const scrollHeight = searchResults.scrollHeight;
+    const clientHeight = searchResults.clientHeight;
+    
+    // Trigger when within 80px of the bottom
+    if (scrollTop + clientHeight >= scrollHeight - 80) {
+        isLoadingMoreResults = true;
+        renderNextBatch();
+    }
+});
 
 // Back button functionality
 backButton.addEventListener('click', () => {

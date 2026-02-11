@@ -1912,11 +1912,12 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
           const parts = line.substring('thumbnail::'.length).split('::');
           if (parts.length >= 3) {
             const [title, url, duration, thumbnail] = parts;
-            let thumbnailUrl = thumbnail || '';
+            let thumbnailUrl = (thumbnail && thumbnail !== 'NA') ? thumbnail.trim() : '';
             if (thumbnailUrl && !thumbnailUrl.startsWith('http')) {
               thumbnailUrl = thumbnailUrl.startsWith('//') ? 'https:' + thumbnailUrl : 'https://' + thumbnailUrl;
             }
-            if (!thumbnailUrl && url && url.includes('youtube.com')) {
+            // Fallback: build thumbnail URL from the video ID
+            if (!thumbnailUrl && url) {
               const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^\/\?&]+)/);
               if (videoIdMatch && videoIdMatch[1]) {
                 thumbnailUrl = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`;
