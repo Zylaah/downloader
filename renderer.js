@@ -76,8 +76,7 @@ let selectedVideoUrl = ''; // Store the selected video URL
 let originalVideoUrl = ''; // Store the original URL (useful for playlists)
 let isPlaylistUrl = false; // Track if current selection is a playlist URL
 let playlistMode = 'single'; // 'single' | 'playlist'
-const DOWNLOAD_PROGRESS_SCALE = 0.85; // Download part takes up 85% of the bar
-let conversionSimulationActive = false;
+let conversionPhaseActive = false;
 let videoInfoController = null; // To control video info fetching
 let currentPlaylistItems = [];
 let isActivePlaylistDownload = false;
@@ -468,15 +467,12 @@ function resetUI() {
     progressContainer.style.display = 'none';
     cancelDownloadBtn.style.display = 'none'; // Hide cancel button
     
-    // Clear any running simulation
-    if (window.conversionSimulationInterval) {
-        clearInterval(window.conversionSimulationInterval);
-        window.conversionSimulationInterval = null;
-    }
+    // Reset conversion phase state
+    conversionPhaseActive = false;
+    document.querySelector('.progress-wrapper').classList.remove('indeterminate');
     
     // Reset progress bar text
     progressBarText.textContent = '0%';
-    conversionSimulationActive = false; // Reset simulation flag
     
     // Focus on search field
     searchQuery.focus();
@@ -511,7 +507,8 @@ downloadButton.addEventListener('click', () => {
     }
 
     resetListeners();
-    conversionSimulationActive = false; // Reset before new download
+    conversionPhaseActive = false; // Reset before new download
+    document.querySelector('.progress-wrapper').classList.remove('indeterminate');
     
     searchResults.style.display = 'none';
     downloadButton.style.display = 'none';
@@ -554,8 +551,8 @@ downloadButton.addEventListener('click', () => {
 
     window.electronAPI.onDownloadProgress((progressData) => {
         console.log('[Renderer] Received download-progress event with data:', JSON.stringify(progressData)); 
-        if (conversionSimulationActive) {
-            console.log('[Renderer] Conversion simulation active, ignoring download-progress event.');
+        if (conversionPhaseActive) {
+            console.log('[Renderer] Conversion phase active, ignoring download-progress event.');
             return; 
         }
 
@@ -584,14 +581,11 @@ downloadButton.addEventListener('click', () => {
         // Ensure actualDownloadPercent is a number for calculations
         if (isNaN(actualDownloadPercent)) actualDownloadPercent = 0;
 
-        const overallProgressPercent = actualDownloadPercent * DOWNLOAD_PROGRESS_SCALE;
-        updateProgressBar(overallProgressPercent);
+        updateProgressBar(actualDownloadPercent);
 
         if (isPreparing) {
             progressBarText.textContent = window.i18n.t('download.preparing');
         } else if (actualDownloadPercent >= 99.5) {
-            // Once download is effectively 100%, show a finalization message 
-            // before conversion-phase-started event updates it to "Conversion..."
             progressBarText.textContent = window.i18n.t('download.finalizing');
         } else {
             progressBarText.textContent = window.i18n.t('download.progress', { percent: Math.round(actualDownloadPercent) });
@@ -599,14 +593,12 @@ downloadButton.addEventListener('click', () => {
     });
 
     window.electronAPI.onConversionPhaseStarted(() => {
-        if (conversionSimulationActive) return; 
-        conversionSimulationActive = true;
+        if (conversionPhaseActive) return; 
+        conversionPhaseActive = true;
         console.log("Conversion phase started signal received by renderer.");
-        // Text is now explicitly "Conversion en cours..."
         progressBarText.textContent = window.i18n.t('download.converting');
-        // Ensure bar is at least at the starting point of conversion visually
-        updateProgressBar(DOWNLOAD_PROGRESS_SCALE * 100);
-        simulateConversionProgress(DOWNLOAD_PROGRESS_SCALE * 100, 100, 3000); 
+        // Switch bar to indeterminate pulsing animation
+        document.querySelector('.progress-wrapper').classList.add('indeterminate');
     });
 
     window.electronAPI.onPlaylistItemUpdate((info) => {
@@ -641,10 +633,10 @@ downloadButton.addEventListener('click', () => {
     });
 
     window.electronAPI.onDownloadComplete((message) => {
-        if (window.conversionSimulationInterval) {
-            clearInterval(window.conversionSimulationInterval);
-            window.conversionSimulationInterval = null;
-        }
+        // Reset conversion phase state
+        conversionPhaseActive = false;
+        document.querySelector('.progress-wrapper').classList.remove('indeterminate');
+        
         progressContainer.style.display = 'none'; // Hide the progress bar container
         cancelDownloadBtn.style.display = 'none'; // Hide cancel button
 
@@ -661,22 +653,17 @@ downloadButton.addEventListener('click', () => {
         progressContainer.style.display = 'none';
         cancelDownloadBtn.style.display = 'none'; // Hide cancel button
         downloadButton.style.display = 'inline-block';
-        conversionSimulationActive = false;
-        if (window.conversionSimulationInterval) {
-            clearInterval(window.conversionSimulationInterval);
-        }
+        conversionPhaseActive = false;
+        document.querySelector('.progress-wrapper').classList.remove('indeterminate');
         isActivePlaylistDownload = false;
         lastPlaylistIndex = null;
         resetListeners();
     });
 
     window.electronAPI.onDownloadCancelled(() => {
-        // Clear any running simulation
-        conversionSimulationActive = false;
-        if (window.conversionSimulationInterval) {
-            clearInterval(window.conversionSimulationInterval);
-            window.conversionSimulationInterval = null;
-        }
+        // Reset conversion phase state
+        conversionPhaseActive = false;
+        document.querySelector('.progress-wrapper').classList.remove('indeterminate');
         
         // Reset all listeners
         resetListeners();
@@ -1102,33 +1089,6 @@ backButton.addEventListener('click', () => {
     selectedVideoUrl = '';
 });
 
-// Modified simulateConversionProgress to accept start/end points
-function simulateConversionProgress(startPercentOverall, endPercentOverall, duration) {
-    const steps = 30; 
-    const increment = (endPercentOverall - startPercentOverall) / steps;
-    const interval = duration / steps;
-    
-    let currentOverallPercent = startPercentOverall;
-    let step = 0;
-    
-    if (window.conversionSimulationInterval) {
-        clearInterval(window.conversionSimulationInterval);
-    }
-    
-    window.conversionSimulationInterval = setInterval(() => {
-        step++;
-        currentOverallPercent = startPercentOverall + (step * increment);
-        currentOverallPercent = Math.min(currentOverallPercent, endPercentOverall); 
-        
-        updateProgressBar(currentOverallPercent);
-        // progressBarText is NOT set here, allowing "Conversion en cours..." to persist
-        
-        if (step >= steps || currentOverallPercent >= endPercentOverall) {
-            clearInterval(window.conversionSimulationInterval);
-            window.conversionSimulationInterval = null;
-        }
-    }, interval);
-}
 
 // Check yt-dlp availability at startup
 async function checkYtDlpAvailability() {
@@ -1487,12 +1447,9 @@ cancelDownloadBtn.addEventListener('click', async () => {
         if (result.success) {
             displayUserMessage('Téléchargement annulé', 'error');
             
-            // Clear any running simulation
-            conversionSimulationActive = false;
-            if (window.conversionSimulationInterval) {
-                clearInterval(window.conversionSimulationInterval);
-                window.conversionSimulationInterval = null;
-            }
+            // Reset conversion phase state
+            conversionPhaseActive = false;
+            document.querySelector('.progress-wrapper').classList.remove('indeterminate');
             
             // Reset all listeners
             resetListeners();
@@ -1585,6 +1542,20 @@ initializePath();
 
 // Check yt-dlp and ffmpeg availability and show popup if needed
 checkAndShowBinaryPopup();
+
+// Silently check for yt-dlp binary updates in the background (non-blocking)
+window.electronAPI.checkYtDlpUpdate()
+    .then(result => {
+        if (result && result.updated) {
+            console.log('[Renderer] yt-dlp updated to', result.version);
+            displayUserMessage(window.i18n.t('ytdlp.updated', { version: result.version }), 'success');
+        } else {
+            console.log('[Renderer] yt-dlp update check:', result && result.reason);
+        }
+    })
+    .catch(err => {
+        console.warn('[Renderer] yt-dlp update check failed:', err);
+    });
 
 // Check for application updates on startup and handle custom UI
 initAutoUpdateHandling();

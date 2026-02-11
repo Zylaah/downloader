@@ -96,6 +96,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlaylistInfo: (url) => ipcRenderer.invoke('get-playlist-info', url),
   cancelVideoInfo: () => ipcRenderer.invoke('cancel-video-info'),
   checkYtDlpAvailability: () => ipcRenderer.invoke('check-yt-dlp-availability'),
+  checkYtDlpUpdate: () => ipcRenderer.invoke('check-ytdlp-update'),
   checkFfmpegAvailability: () => ipcRenderer.invoke('check-ffmpeg-availability'),
   downloadYtDlpBinary: () => ipcRenderer.invoke('download-yt-dlp-binary'),
   downloadFfmpegBinary: () => ipcRenderer.invoke('download-ffmpeg-binary'),

@@ -22,6 +22,28 @@
     width: 0%;
 }
 
+/* Indeterminate state for conversion phase */
+.progress-wrapper.indeterminate #progressBarFill {
+    width: 100% !important;
+    background: linear-gradient(
+        90deg,
+        var(--primary) 0%,
+        rgba(217, 35, 15, 0.35) 40%,
+        var(--primary) 80%
+    );
+    background-size: 200% 100%;
+    animation: indeterminate-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate-pulse {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
 .progress-controls {
     display: flex;
     align-items: center;

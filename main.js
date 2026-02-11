@@ -687,6 +687,113 @@ ipcMain.handle('check-ffmpeg-availability', async () => {
   }
 });
 
+// Check if yt-dlp is outdated and update it silently
+async function checkAndUpdateYtDlp() {
+  try {
+    // Ensure we have a binary first
+    const binaryPath = await ensureYtDlpBinary();
+    if (!binaryPath) {
+      return { updated: false, reason: 'no-binary' };
+    }
+
+    const ytDlp = getYtDlpWrap(binaryPath);
+
+    // Get current version (returns a date string like "2025.11.12")
+    let versionString;
+    try {
+      versionString = await ytDlp.getVersion();
+      versionString = versionString.trim();
+    } catch (err) {
+      console.warn('[Main Process] Could not get yt-dlp version:', err.message);
+      return { updated: false, reason: 'version-check-failed' };
+    }
+
+    console.log('[Main Process] Current yt-dlp version:', versionString);
+
+    // Parse version date (format: "YYYY.MM.DD")
+    const parts = versionString.split('.');
+    if (parts.length < 3) {
+      console.warn('[Main Process] Unexpected yt-dlp version format:', versionString);
+      return { updated: false, reason: 'bad-version-format' };
+    }
+
+    const versionDate = new Date(
+      parseInt(parts[0], 10),
+      parseInt(parts[1], 10) - 1, // months are 0-indexed
+      parseInt(parts[2], 10)
+    );
+    const ageInDays = (Date.now() - versionDate.getTime()) / (1000 * 60 * 60 * 24);
+
+    console.log(`[Main Process] yt-dlp binary is ~${Math.round(ageInDays)} days old`);
+
+    if (ageInDays < 30) {
+      return { updated: false, reason: 'up-to-date' };
+    }
+
+    console.log('[Main Process] yt-dlp is outdated (>30 days), updating...');
+
+    // Fetch the latest release tag from GitHub API to know the version we're downloading
+    let newVersion;
+    try {
+      const https = require('https');
+      newVersion = await new Promise((resolve, reject) => {
+        const req = https.get('https://api.github.com/repos/yt-dlp/yt-dlp/releases?page=1&per_page=1', {
+          headers: { 'User-Agent': 'MyTube' }
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try {
+              const releases = JSON.parse(data);
+              resolve(releases[0]?.tag_name || null);
+            } catch { resolve(null); }
+          });
+        });
+        req.on('error', () => resolve(null));
+        req.setTimeout(10000, () => { req.destroy(); resolve(null); });
+      });
+    } catch {
+      newVersion = null;
+    }
+
+    // Always write to the writable userData/binaries/ location
+    const appDataDir = app.getPath('userData');
+    const binariesDir = path.join(appDataDir, 'binaries');
+    if (!fs.existsSync(binariesDir)) {
+      fs.mkdirSync(binariesDir, { recursive: true });
+    }
+    const updatePath = path.join(binariesDir, ytDlpExecutableName);
+
+    // Download latest release from GitHub
+    await YTDlpWrap.downloadFromGithub(updatePath);
+
+    // Make executable on Unix
+    if (os.platform() !== 'win32') {
+      fs.chmodSync(updatePath, '755');
+    }
+
+    // Reset the cached instance so getYtDlpWrap picks up the new binary
+    ytDlpBinaryPath = updatePath;
+    currentBinaryPath = null; // Force getYtDlpWrap to create a new instance
+    needsNewInstance = true;
+    getYtDlpWrap(updatePath);
+
+    // Format version for display
+    const displayVersion = newVersion || 'latest';
+
+    console.log('[Main Process] yt-dlp updated to:', displayVersion);
+    return { updated: true, version: displayVersion };
+  } catch (error) {
+    console.error('[Main Process] Failed to update yt-dlp:', error);
+    return { updated: false, reason: 'update-failed', error: error.message };
+  }
+}
+
+// IPC handler to check and update yt-dlp
+ipcMain.handle('check-ytdlp-update', async () => {
+  return await checkAndUpdateYtDlp();
+});
+
 // IPC handler to download yt-dlp binary with progress
 ipcMain.handle('download-yt-dlp-binary', async (event) => {
   try {
@@ -1313,16 +1420,20 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
 
     await downloadProcess
     .on('progress', (progress) => {
-      if (ENABLE_DOWNLOAD_LOGS && progress && typeof progress.percent === 'string') {
-        const percent = parseFloat(progress.percent.replace('%', ''));
+      if (ENABLE_DOWNLOAD_LOGS && progress && progress.percent != null) {
+        const percent = typeof progress.percent === 'number'
+          ? progress.percent
+          : parseFloat(String(progress.percent).replace('%', ''));
         if (percent % 10 === 0 || percent >= 99) {
-          console.log(`[Main Process] Download progress: ${progress.percent}`);
+          console.log(`[Main Process] Download progress: ${percent}%`);
         }
       }
       event.reply('download-progress', progress);
 
-      if (!conversionSignalSent && progress && typeof progress.percent === 'string') {
-        const currentPercent = parseFloat(progress.percent.replace('%',''));
+      if (!conversionSignalSent && progress && progress.percent != null) {
+        const currentPercent = typeof progress.percent === 'number'
+          ? progress.percent
+          : parseFloat(String(progress.percent).replace('%',''));
         if (currentPercent >= 99.5) {
           if (ENABLE_DOWNLOAD_LOGS) {
             console.log('[Main Process] Download reported as essentially complete (>=99.5%).');
@@ -1392,26 +1503,22 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
         return;
       }
       
-      // Fallback: If signal somehow wasn't sent, send it now.
+      // Fallback: If conversion signal somehow wasn't sent, send it now.
       if (!conversionSignalSent) {
         if (ENABLE_DOWNLOAD_LOGS) {
           console.warn('[Main Process] \'close\' event: conversion-phase-started was missed. Sending now.');
         }
         event.reply('conversion-phase-started');
-        // conversionSignalSent = true; // Not strictly needed here as it's the end, but good practice
       }
       
-      // IMPORTANT: Delay sending 'download-complete' to allow the renderer's 
-      // conversion simulation (e.g., 3 seconds) to visually complete.
-      setTimeout(() => {
-        const finalMessage = downloadPath 
-            ? translate('download.completeInDirectoryAudio', { downloadPath })
-            : translate('download.completeWithPath', { outputPath: outputFilePath });
-        if (ENABLE_DOWNLOAD_LOGS) {
-          console.log(`[Main Process] Sending download-complete. URL: ${url}`);
-        }
-        event.reply('download-complete', finalMessage);
-      }, 3500); // Give renderer ~3.5s (simulation is 3s)
+      // Send download-complete immediately — no artificial delay needed
+      const finalMessage = downloadPath 
+          ? translate('download.completeInDirectoryAudio', { downloadPath })
+          : translate('download.completeWithPath', { outputPath: outputFilePath });
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+      }
+      event.reply('download-complete', finalMessage);
     });
 
   } catch (error) {
@@ -1760,16 +1867,20 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
 
     await downloadProcess
     .on('progress', (progress) => {
-      if (ENABLE_DOWNLOAD_LOGS && progress && typeof progress.percent === 'string') {
-        const percent = parseFloat(progress.percent.replace('%', ''));
+      if (ENABLE_DOWNLOAD_LOGS && progress && progress.percent != null) {
+        const percent = typeof progress.percent === 'number'
+          ? progress.percent
+          : parseFloat(String(progress.percent).replace('%', ''));
         if (percent % 10 === 0 || percent >= 99) {
-          console.log(`[Main Process] Download progress: ${progress.percent}`);
+          console.log(`[Main Process] Download progress: ${percent}%`);
         }
       }
       event.reply('download-progress', progress);
 
-      if (!conversionSignalSent && progress && typeof progress.percent === 'string') {
-        const currentPercent = parseFloat(progress.percent.replace('%',''));
+      if (!conversionSignalSent && progress && progress.percent != null) {
+        const currentPercent = typeof progress.percent === 'number'
+          ? progress.percent
+          : parseFloat(String(progress.percent).replace('%',''));
         if (currentPercent >= 99.5) {
           if (ENABLE_DOWNLOAD_LOGS) {
             console.log('[Main Process] Download reported as essentially complete (>=99.5%)');
@@ -1846,17 +1957,16 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
         event.reply('conversion-phase-started');
       }
       
-      setTimeout(() => {
-        const finalMessage = downloadPath 
-            ? (format === 'audio' 
-                ? translate('download.completeInDirectoryAudio', { downloadPath })
-                : translate('download.completeInDirectoryVideo', { downloadPath }))
-            : translate('download.completeWithPath', { outputPath: outputFilePath });
-        if (ENABLE_DOWNLOAD_LOGS) {
-          console.log(`[Main Process] Sending download-complete. URL: ${url}`);
-        }
-        event.reply('download-complete', finalMessage);
-      }, 3500);
+      // Send download-complete immediately — no artificial delay needed
+      const finalMessage = downloadPath 
+          ? (format === 'audio' 
+              ? translate('download.completeInDirectoryAudio', { downloadPath })
+              : translate('download.completeInDirectoryVideo', { downloadPath }))
+          : translate('download.completeWithPath', { outputPath: outputFilePath });
+      if (ENABLE_DOWNLOAD_LOGS) {
+        console.log(`[Main Process] Sending download-complete. URL: ${url}`);
+      }
+      event.reply('download-complete', finalMessage);
     });
 
   } catch (error) {

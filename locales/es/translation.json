@@ -118,6 +118,9 @@
       "playlistInfoFailed": "Failed to get playlist info: {{error}}",
       "searchSynchronousError": "Synchronous handler error: {{error}}"
     },
+    "ytdlp": {
+      "updated": "yt-dlp actualizado ({{version}})"
+    },
     "binariesStatus": {
       "ytDlpUnavailable": "yt-dlp no disponible: {{error}}",
       "ytDlpAvailable": "Binario de yt-dlp disponible en: {{path}}",
