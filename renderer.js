@@ -417,6 +417,7 @@ function resetUI() {
     
     // Clear search field and results
     searchQuery.value = '';
+    clearSearchButton.classList.remove('visible');
     searchResults.style.display = 'none';
     
     // Show search input again
@@ -1049,6 +1050,7 @@ backButton.addEventListener('click', () => {
     document.querySelector('.search-container').style.display = 'flex';
     // Clear the search / URL input
     searchQuery.value = '';
+    clearSearchButton.classList.remove('visible');
     
     // Only show search results if there are results to display
     if (searchResults.innerHTML.trim() !== '') {
