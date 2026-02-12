@@ -13,6 +13,9 @@
       "downloadLocationTitle": "Ubicación de descarga",
       "currentPathTooltip": "Ubicación de descarga actual",
       "changeButton": "Cambiar",
+      "themeLabel": "Tema",
+      "themeLight": "Claro",
+      "themeDark": "Oscuro",
       "languageLabel": "Idioma"
     },
     "binaries": {

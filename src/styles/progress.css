@@ -7,7 +7,7 @@
 }
 
 .progress-wrapper {
-    background-color: #f5f5f5;
+    background-color: var(--gray-light);
     border-radius: 100px;
     height: 10px;
     overflow: hidden;

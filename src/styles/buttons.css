@@ -1,5 +1,5 @@
 .btn-secondary {
-    background-color: #f0f0f0;
+    background-color: var(--bg-btn-secondary);
     color: var(--gray-dark);
     border: 1px solid var(--gray-light);
     border-radius: var(--radius);
@@ -13,7 +13,7 @@
 }
 
 .btn-secondary:hover {
-    background-color: #e5e5e5;
+    filter: brightness(0.92);
 }
 
 /* Primary button (used for main actions like updates) */
@@ -64,7 +64,7 @@
 }
 
 #formatSelect {
-    background-color: white;
+    background-color: var(--bg-input);
     color: var(--gray-dark);
     border: 1px solid var(--gray-light);
     border-radius: var(--radius);

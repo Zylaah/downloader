@@ -3,8 +3,8 @@
     top: 50px;
     left: 50%;
     transform: translateX(-50%) translateY(-150%);
-    background-color: var(--dark);
-    color: white;
+    background-color: var(--toast-bg);
+    color: var(--toast-text);
     padding: 12px 25px;
     border-radius: var(--radius);
     box-shadow: var(--shadow);
@@ -37,13 +37,13 @@
     text-align: center;
     margin: 30px auto;
     padding: 20px;
-    background-color: #e8f5e9;
+    background-color: var(--primary-light);
     border-radius: var(--radius);
     max-width: 400px;
 }
 
 .completion-message {
     margin-bottom: 15px;
-    color: #2e7d32;
+    color: var(--success);
     font-weight: 500;
 } 

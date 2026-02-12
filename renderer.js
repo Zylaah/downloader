@@ -1,3 +1,13 @@
+// Apply theme immediately to avoid flash
+const THEME_STORAGE_KEY = 'myTube-theme';
+(function applyInitialTheme() {
+    try {
+        const stored = localStorage.getItem(THEME_STORAGE_KEY);
+        const theme = (stored === 'dark' || stored === 'light') ? stored : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+    } catch {}
+})();
+
 const youtubeUrlInput = document.getElementById('youtubeUrl');
 const downloadButton = document.getElementById('downloadButton');
 const messageArea = document.getElementById('messageArea');
@@ -244,6 +254,43 @@ settingsPopup.addEventListener('click', (e) => {
         settingsPopup.style.display = 'none';
     }
 });
+
+// Theme handling
+function getStoredTheme() {
+    try {
+        const stored = localStorage.getItem(THEME_STORAGE_KEY);
+        return (stored === 'dark' || stored === 'light') ? stored : 'light';
+    } catch {
+        return 'light';
+    }
+}
+
+function setStoredTheme(theme) {
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {}
+}
+
+function highlightCurrentThemeButton(theme) {
+    document.querySelectorAll('.theme-option-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.getAttribute('data-theme') === theme);
+    });
+}
+
+function initThemeHandling() {
+    highlightCurrentThemeButton(getStoredTheme());
+    document.querySelectorAll('.theme-option-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const theme = btn.getAttribute('data-theme');
+            if (!theme) return;
+            document.documentElement.setAttribute('data-theme', theme);
+            setStoredTheme(theme);
+            highlightCurrentThemeButton(theme);
+        });
+    });
+}
+
+initThemeHandling();
 
 // Binary download popup handlers
 closeBinaryDownloadPopup.addEventListener('click', () => {

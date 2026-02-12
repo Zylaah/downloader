@@ -6,7 +6,7 @@
     right: 0;
     height: 38px;
     background-color: var(--light);
-    color: black;
+    color: var(--gray-dark);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -40,7 +40,7 @@
 .settings-button svg {
     width: 18px;
     height: 18px;
-    fill: black;
+    fill: var(--gray-dark);
 }
 
 .titlebar-title {
@@ -65,7 +65,7 @@
 }
 
 .titlebar-button:hover {
-    background-color: #bdbdbd;
+    background-color: var(--gray-light);
 }
 
 .titlebar-button.close-button:hover {
@@ -75,7 +75,12 @@
 .titlebar-button svg {
     width: 10px;
     height: 10px;
-    fill: black;
+    fill: var(--gray-dark);
+}
+
+.titlebar-button svg path,
+.titlebar-button svg [stroke] {
+    stroke: currentColor;
 }
 
 #titlebar-logo {

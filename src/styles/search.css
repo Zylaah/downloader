@@ -21,6 +21,8 @@
     width: 100%;
     padding: 14px 36px 14px 20px;
     border: 2px solid var(--gray-light);
+    background-color: var(--bg-input);
+    color: var(--gray-dark);
     border-radius: var(--radius);
     font-size: 16px;
     transition: all 0.1s ease;
@@ -84,6 +86,7 @@
 #searchButton:disabled {
     background-color: var(--gray-light);
     cursor: not-allowed;
+    color: var(--gray-dark);
 }
 
 /* Search results */
@@ -92,7 +95,7 @@
     max-height: 400px;
     overflow-y: auto;
     margin-top: 15px;
-    background-color: white;
+    background-color: var(--bg-card);
     border-radius: var(--radius);
     border: 1px solid var(--gray-light);
     display: none;
@@ -113,11 +116,11 @@
 .search-results-container::-webkit-scrollbar-thumb {
     background-color: var(--gray-light);
     border-radius: 4px;
-    border: 2px solid white;
+    border: 2px solid var(--bg-card);
 }
 
 .search-results-container::-webkit-scrollbar-thumb:hover {
-    background-color: #c0c0c0;
+    background-color: var(--gray);
 }
 
 .search-results-container::-webkit-scrollbar-thumb:active {
@@ -135,7 +138,7 @@
 }
 
 .search-result-item:hover {
-    background-color: rgba(217, 35, 15, 0.05);
+    background-color: var(--primary-light);
 }
 
 .search-result-item:last-child {
@@ -150,7 +153,7 @@
     aspect-ratio: 16 / 9;
     border-radius: 6px;
     overflow: hidden;
-    background-color: #e5e7eb;
+    background-color: var(--gray-light);
 }
 
 .search-result-thumbnail img {
@@ -232,7 +235,7 @@
     margin-top: 15px;
     margin-bottom: 20px;
     display: none;
-    background-color: rgba(217, 35, 15, 0.05);
+    background-color: var(--primary-light);
     border: 1px solid var(--primary);
     padding: 12px 15px;
     border-radius: var(--radius);
@@ -251,7 +254,7 @@
     aspect-ratio: 16 / 9;
     border-radius: 6px;
     overflow: hidden;
-    background-color: #e5e7eb;
+    background-color: var(--gray-light);
 }
 
 .selected-video-thumbnail img {
@@ -312,7 +315,7 @@
     font-size: 13px;
     border-radius: var(--radius);
     border: 1px solid var(--gray-light);
-    background-color: white;
+    background-color: var(--bg-card);
     color: var(--gray-dark);
     cursor: pointer;
     transition: var(--transition);
@@ -320,7 +323,7 @@
 
 .playlist-option-btn.active {
     border-color: var(--primary);
-    background-color: rgba(217, 35, 15, 0.08);
+    background-color: var(--primary-light);
     color: var(--primary);
 }
 
@@ -358,11 +361,11 @@
 .playlist-items-list::-webkit-scrollbar-thumb {
     background-color: var(--gray-light);
     border-radius: 4px;
-    border: 2px solid white;
+    border: 2px solid var(--bg-card);
 }
 
 .playlist-items-list::-webkit-scrollbar-thumb:hover {
-    background-color: #c0c0c0;
+    background-color: var(--gray);
 }
 
 .playlist-items-list::-webkit-scrollbar-thumb:active {
@@ -382,7 +385,7 @@
 }
 
 .playlist-item.current {
-    background-color: rgba(217, 35, 15, 0.08);
+    background-color: var(--primary-light);
     color: var(--primary);
     font-weight: 500;
 }
