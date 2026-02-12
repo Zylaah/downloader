@@ -18,6 +18,9 @@ const closeSettingsPopup = document.getElementById('closeSettingsPopup');
 
 const selectedVideoContainer = document.getElementById('selectedVideoContainer');
 const selectedVideoTitle = document.getElementById('selectedVideoTitle');
+const selectedVideoThumbnail = document.getElementById('selectedVideoThumbnail');
+const selectedVideoThumbnailImg = document.getElementById('selectedVideoThumbnailImg');
+const selectedVideoChannel = document.getElementById('selectedVideoChannel');
 const selectedVideoLabel = selectedVideoContainer
   ? selectedVideoContainer.querySelector('.selected-video-label')
   : null;
@@ -428,7 +431,7 @@ function resetUI() {
     
     // Reset selected video display
     selectedVideoContainer.style.display = 'none';
-    selectedVideoTitle.textContent = '';
+    displaySelectedVideo({ title: '', channel: null, thumbnail: null });
     // Restore label/title visibility in case they were hidden for
     // full-playlist download mode.
     if (selectedVideoLabel) {
@@ -817,6 +820,29 @@ function updatePlaylistUI() {
     }
 }
 
+// Display selected video info (title, optional channel, optional thumbnail)
+function displaySelectedVideo({ title, channel, thumbnail }) {
+    selectedVideoTitle.textContent = title || '';
+    selectedVideoTitle.style.display = 'block';
+
+    if (thumbnail) {
+        selectedVideoThumbnail.style.display = 'flex';
+        selectedVideoThumbnailImg.src = thumbnail;
+        selectedVideoThumbnailImg.onerror = () => selectedVideoThumbnail.style.display = 'none';
+    } else {
+        selectedVideoThumbnail.style.display = 'none';
+        selectedVideoThumbnailImg.src = '';
+    }
+
+    if (channel) {
+        selectedVideoChannel.textContent = channel;
+        selectedVideoChannel.style.display = 'block';
+    } else {
+        selectedVideoChannel.style.display = 'none';
+        selectedVideoChannel.textContent = '';
+    }
+}
+
 async function performSearch() {
     const query = searchQuery.value.trim();
     if (!query) {
@@ -833,7 +859,7 @@ async function performSearch() {
         selectedVideoUrl = normalizeYouTubeUrl(query);
         
         // Show loading state while fetching video info
-        selectedVideoTitle.textContent = window.i18n.t('playlist.fetchingVideoInfo');
+        displaySelectedVideo({ title: window.i18n.t('playlist.fetchingVideoInfo'), channel: null, thumbnail: null });
         selectedVideoContainer.style.display = 'block';
         
         // Clear and hide search results and search container
@@ -864,9 +890,13 @@ async function performSearch() {
             }
             
             if (videoInfo && videoInfo.title) {
-                selectedVideoTitle.textContent = `${videoInfo.title}`;
+                displaySelectedVideo({
+                    title: videoInfo.title,
+                    channel: videoInfo.channel || null,
+                    thumbnail: videoInfo.thumbnail || null
+                });
             } else {
-                selectedVideoTitle.textContent = window.i18n.t('search.videoFromLink');
+                displaySelectedVideo({ title: window.i18n.t('search.videoFromLink'), channel: null, thumbnail: null });
             }
             
             // Only show playlist/single options after we have attempted to retrieve video info
@@ -881,7 +911,7 @@ async function performSearch() {
                 return;
             }
             console.error('Error fetching video info:', error);
-            selectedVideoTitle.textContent = window.i18n.t('search.videoFromLink');
+            displaySelectedVideo({ title: window.i18n.t('search.videoFromLink'), channel: null, thumbnail: null });
             
             // Show download button even if title fetch failed
             downloadButton.style.display = 'inline-block';
@@ -896,9 +926,8 @@ async function performSearch() {
         return;
     }
 
-    // Show loading state for search
+    // Show loading state for search (keep icon, just disable)
     searchButton.disabled = true;
-    searchButton.textContent = window.i18n.t('search.searching');
     searchResults.innerHTML = `<div class="search-result-item">${window.i18n.t('search.searching')}</div>`;
     searchResults.style.display = 'block';
     
@@ -985,8 +1014,12 @@ function renderNextBatch() {
             selectedVideoUrl = normalizedUrl || video.url;
             updatePlaylistUI();
             
-            // Display selected video title
-            selectedVideoTitle.textContent = video.title;
+            // Display selected video info
+            displaySelectedVideo({
+                title: video.title,
+                channel: video.channel || null,
+                thumbnail: video.thumbnail || null
+            });
             selectedVideoContainer.style.display = 'block';
             
             // Hide search results
@@ -1048,9 +1081,12 @@ backButton.addEventListener('click', () => {
     
     // Show search container again
     document.querySelector('.search-container').style.display = 'flex';
-    // Clear the search / URL input
-    searchQuery.value = '';
-    clearSearchButton.classList.remove('visible');
+    // Keep search input so user can refine or search again
+    if (searchQuery.value.length > 0) {
+        clearSearchButton.classList.add('visible');
+    } else {
+        clearSearchButton.classList.remove('visible');
+    }
     
     // Only show search results if there are results to display
     if (searchResults.innerHTML.trim() !== '') {

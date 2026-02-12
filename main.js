@@ -1579,7 +1579,7 @@ ipcMain.handle('get-video-info', async (event, url) => {
       // Use execPromise for reliable output capture
       const promise = ytDlp.execPromise([
           url.trim(),
-          '--print', '%(title)s',
+          '--print', '%(title)s::%(channel)s::%(thumbnail)s',
           '--no-download',
           '--no-playlist',      // Avoid processing entire playlists/radios
           '--playlist-items', '1', // If treated as playlist, only take first item
@@ -1590,9 +1590,22 @@ ipcMain.handle('get-video-info', async (event, url) => {
             isResolved = true;
             clearTimeout(timeoutId);
             activeVideoInfoProcesses.delete(processId);
-            const title = output.trim();
-            console.log('Video title retrieved:', title);
-            resolve({ title: title });
+            const parts = output.trim().split('::');
+            const title = parts[0] || '';
+            let channel = (parts[1] && parts[1] !== 'NA') ? parts[1].trim() : '';
+            let thumbnail = (parts[2] && parts[2] !== 'NA') ? parts[2].trim() : '';
+            if (thumbnail && !thumbnail.startsWith('http')) {
+              thumbnail = thumbnail.startsWith('//') ? 'https:' + thumbnail : 'https://' + thumbnail;
+            }
+            // Fallback thumbnail from URL if needed
+            if (!thumbnail && url) {
+              const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^\/\?&]+)/);
+              if (videoIdMatch && videoIdMatch[1]) {
+                thumbnail = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`;
+              }
+            }
+            console.log('Video info retrieved:', { title, channel, thumbnail: !!thumbnail });
+            resolve({ title, channel, thumbnail });
           }
         })
         .catch(error => {
@@ -2009,7 +2022,7 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
         searchQuery,
         '--flat-playlist',
         '--format=best',
-        '--print', 'thumbnail::%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s',
+        '--print', 'thumbnail::%(title)s::%(webpage_url)s::%(duration_string)s::%(thumbnail)s::%(uploader)s',
         '--encoding', 'utf-8'
       ])
       .then(output => {
@@ -2021,7 +2034,7 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
           
           const parts = line.substring('thumbnail::'.length).split('::');
           if (parts.length >= 3) {
-            const [title, url, duration, thumbnail] = parts;
+            const [title, url, duration, thumbnail, channel] = parts;
             let thumbnailUrl = (thumbnail && thumbnail !== 'NA') ? thumbnail.trim() : '';
             if (thumbnailUrl && !thumbnailUrl.startsWith('http')) {
               thumbnailUrl = thumbnailUrl.startsWith('//') ? 'https:' + thumbnailUrl : 'https://' + thumbnailUrl;
@@ -2033,11 +2046,13 @@ ipcMain.handle('search-youtube', async (event, query, maxResults = 5) => {
                 thumbnailUrl = `https://img.youtube.com/vi/${videoIdMatch[1]}/mqdefault.jpg`;
               }
             }
+            const channelName = (channel && channel !== 'NA') ? channel.trim() : '';
             searchResults.push({
               title: title || 'Unknown Title',
               url: url || '',
               duration: duration || 'Unknown',
-              thumbnail: thumbnailUrl
+              thumbnail: thumbnailUrl,
+              channel: channelName
             });
           }
         });

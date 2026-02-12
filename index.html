@@ -173,7 +173,15 @@
             <!-- Selected video display -->
             <div id="selectedVideoContainer" class="selected-video-container">
                 <div class="selected-video-label" data-i18n-key="playlist.selectedLabel">Vidéo sélectionnée :</div>
-                <div id="selectedVideoTitle" class="selected-video-title"></div>
+                <div class="selected-video-info-row">
+                    <div id="selectedVideoThumbnail" class="selected-video-thumbnail" style="display: none;">
+                        <img id="selectedVideoThumbnailImg" src="" alt="" />
+                    </div>
+                    <div class="selected-video-text">
+                        <div id="selectedVideoTitle" class="selected-video-title"></div>
+                        <div id="selectedVideoChannel" class="selected-video-channel" style="display: none;"></div>
+                    </div>
+                </div>
 
                 <!-- Playlist options (shown only when a playlist URL is detected) -->
                 <div id="playlistOptions" class="playlist-options" style="display: none;">
