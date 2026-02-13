@@ -38,15 +38,18 @@
     <!-- Settings popup for download location -->
     <div id="settingsPopup" class="popup-overlay">
         <div class="popup-container">
-            <div class="popup-title" data-i18n-key="settings.downloadLocationTitle">Emplacement de téléchargement</div>
+            <div class="popup-title" data-i18n-key="settings.title">Paramètres</div>
             <div class="popup-close" id="closeSettingsPopup">
                 <svg viewBox="0 0 24 24" width="18" height="18">
                     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#555"/>
                 </svg>
             </div>
+            <div class="path-section">
+                <span class="section-label" data-i18n-key="settings.downloadLocationTitle">Emplacement de téléchargement</span>
             <div class="path-display-group">
                 <div id="downloadPathDisplay" title="" data-i18n-attr="title:settings.currentPathTooltip"></div>
                 <button id="setPathButton" class="btn-secondary" data-i18n-key="settings.changeButton">Changer</button>
+            </div>
             </div>
 
             <div class="theme-settings">

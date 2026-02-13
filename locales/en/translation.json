@@ -10,6 +10,7 @@
       "close": "Close"
     },
     "settings": {
+      "title": "Settings",
       "downloadLocationTitle": "Download location",
       "currentPathTooltip": "Current download location",
       "changeButton": "Change",
