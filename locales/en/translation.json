@@ -116,7 +116,7 @@
       "errorSignInRequired": "This video requires sign-in to view.",
       "errorRateLimited": "Too many requests. Please try again later.",
       "errorNetwork": "Network error. Please check your connection and try again.",
-      "errorGeneric": "Download failed. Please try again or check the URL."
+      "errorGeneric": "Download failed. Please try again or check the URL.","completeWithSkipped": "Download completed. Some videos could not be downloaded. Files saved to {{downloadPath}}."
     },
     "clipboard": {
       "errorRead": "Unable to read clipboard"

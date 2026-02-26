@@ -116,7 +116,7 @@
       "errorSignInRequired": "Este vídeo requiere iniciar sesión para verlo.",
       "errorRateLimited": "Demasiadas solicitudes. Inténtalo de nuevo más tarde.",
       "errorNetwork": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
-      "errorGeneric": "Error en la descarga. Inténtalo de nuevo o comprueba la URL."
+      "errorGeneric": "Error en la descarga. Inténtalo de nuevo o comprueba la URL.","completeWithSkipped": "Descarga completada. Algunos vídeos no se pudieron descargar. Archivos guardados en {{downloadPath}}."
     },
     "clipboard": {
       "errorRead": "No se puede leer el portapapeles"

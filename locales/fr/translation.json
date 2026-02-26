@@ -116,7 +116,7 @@
       "errorSignInRequired": "Cette vidéo nécessite une connexion pour être visionnée.",
       "errorRateLimited": "Trop de requêtes. Veuillez réessayer plus tard.",
       "errorNetwork": "Erreur réseau. Vérifiez votre connexion et réessayez.",
-      "errorGeneric": "Échec du téléchargement. Veuillez réessayer ou vérifier l'URL."
+      "errorGeneric": "Échec du téléchargement. Veuillez réessayer ou vérifier l'URL.","completeWithSkipped": "Téléchargement terminé. Certaines vidéos n'ont pas pu être téléchargées. Fichiers enregistrés dans {{downloadPath}}."
     },
     "clipboard": {
       "errorRead": "Impossible de lire le presse-papiers"

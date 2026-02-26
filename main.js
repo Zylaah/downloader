@@ -1520,8 +1520,14 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
       // Clean up process reference on error
       activeDownloadProcesses.delete(processId);
       event.sender.downloadProcessId = null;
-      event.reply('download-error', formatYtDlpError(error));
-      // Trigger cleanup to prevent EBUSY errors on next operation
+      // For playlist downloads with --ignore-errors: yt-dlp may exit 1 even when most
+      // videos succeeded. Treat as completion so the UI shows "Download more" instead of error.
+      if (isPlaylistDownload && downloadPath) {
+        const msg = translate('download.completeWithSkipped', { downloadPath });
+        event.reply('download-complete', msg);
+      } else {
+        event.reply('download-error', formatYtDlpError(error));
+      }
       performCleanup();
     })
     .on('close', (code) => {
@@ -1987,8 +1993,14 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
       // Clean up process reference on error
       activeDownloadProcesses.delete(processId);
       event.sender.downloadProcessId = null;
-      event.reply('download-error', formatYtDlpError(error));
-      // Trigger cleanup to prevent EBUSY errors on next operation
+      // For playlist downloads with --ignore-errors: yt-dlp may exit 1 even when most
+      // videos succeeded. Treat as completion so the UI shows "Download more" instead of error.
+      if (isPlaylistDownload && downloadPath) {
+        const msg = translate('download.completeWithSkipped', { downloadPath });
+        event.reply('download-complete', msg);
+      } else {
+        event.reply('download-error', formatYtDlpError(error));
+      }
       performCleanup();
     })
     .on('close', (code) => {

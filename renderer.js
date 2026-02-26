@@ -90,6 +90,7 @@ let originalVideoUrl = ''; // Store the original URL (useful for playlists)
 let isPlaylistUrl = false; // Track if current selection is a playlist URL
 let playlistMode = 'single'; // 'single' | 'playlist'
 let conversionPhaseActive = false;
+let conversionPhaseStartTime = 0;
 let videoInfoController = null; // To control video info fetching
 let currentPlaylistItems = [];
 let isActivePlaylistDownload = false;
@@ -646,10 +647,12 @@ downloadButton.addEventListener('click', () => {
     window.electronAPI.onConversionPhaseStarted(() => {
         if (conversionPhaseActive) return; 
         conversionPhaseActive = true;
-        console.log("Conversion phase started signal received by renderer.");
+        conversionPhaseStartTime = Date.now();
         progressBarText.textContent = window.i18n.t('download.converting');
-        // Switch bar to indeterminate pulsing animation
-        document.querySelector('.progress-wrapper').classList.add('indeterminate');
+        // Ensure bar is full so the indeterminate gradient animation is visible
+        updateProgressBar(100);
+        const wrapper = document.querySelector('.progress-wrapper');
+        if (wrapper) wrapper.classList.add('indeterminate');
     });
 
     window.electronAPI.onPlaylistItemUpdate((info) => {
@@ -663,10 +666,20 @@ downloadButton.addEventListener('click', () => {
         }
 
         // When starting a new video in playlist, reset conversion phase so the progress bar
-        // shows download progress for this video instead of staying stuck in convert animation
+        // shows download progress for this video instead of staying stuck in convert animation.
+        // Use a minimum display time (400ms) so the conversion animation is visible.
         if (conversionPhaseActive) {
-            conversionPhaseActive = false;
-            document.querySelector('.progress-wrapper').classList.remove('indeterminate');
+            const elapsed = Date.now() - conversionPhaseStartTime;
+            const doReset = () => {
+                conversionPhaseActive = false;
+                const wrapper = document.querySelector('.progress-wrapper');
+                if (wrapper) wrapper.classList.remove('indeterminate');
+            };
+            if (elapsed >= 400) {
+                doReset();
+            } else {
+                setTimeout(doReset, 400 - elapsed);
+            }
         }
 
         // Highlight current and completed items in the playlist list
@@ -700,7 +713,7 @@ downloadButton.addEventListener('click', () => {
 
         selectedVideoContainer.style.display = 'none';
         completionNotification.style.display = 'block';
-        displayUserMessage(window.i18n.t('download.completionNotification'), 'complete');
+        displayUserMessage(message || window.i18n.t('download.completionNotification'), 'complete');
         isActivePlaylistDownload = false;
         lastPlaylistIndex = null;
         resetListeners();
