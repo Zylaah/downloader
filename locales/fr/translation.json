@@ -108,7 +108,15 @@
       "errorGenericPrefix": "Erreur:",
       "cannotCancel": "Impossible d'annuler le téléchargement",
       "cancellationError": "Erreur lors de l'annulation",
-      "noActiveDownloadToCancel": "No active download to cancel"
+      "noActiveDownloadToCancel": "Aucun téléchargement actif à annuler",
+      "errorVideoUnavailable": "Cette vidéo n'est pas disponible. Elle a peut-être été supprimée, rendue privée ou restreinte.",
+      "errorVideoPrivate": "Cette vidéo est privée et ne peut pas être téléchargée.",
+      "errorVideoAgeRestricted": "Cette vidéo est restreinte par âge et ne peut pas être téléchargée.",
+      "errorVideoRestricted": "Cette vidéo n'est pas disponible dans votre région ou est restreinte.",
+      "errorSignInRequired": "Cette vidéo nécessite une connexion pour être visionnée.",
+      "errorRateLimited": "Trop de requêtes. Veuillez réessayer plus tard.",
+      "errorNetwork": "Erreur réseau. Vérifiez votre connexion et réessayez.",
+      "errorGeneric": "Échec du téléchargement. Veuillez réessayer ou vérifier l'URL."
     },
     "clipboard": {
       "errorRead": "Impossible de lire le presse-papiers"

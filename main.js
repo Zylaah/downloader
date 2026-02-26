@@ -37,6 +37,37 @@ function setStoredLanguage(lang) {
   store.set('language', lang);
 }
 
+// Parse yt-dlp error output and return a user-friendly message
+function formatYtDlpError(error) {
+  const raw = String(error?.message || error || '');
+  const stderr = raw.includes('Stderr:') ? raw.split('Stderr:')[1]?.trim() || raw : raw;
+  const lower = stderr.toLowerCase();
+
+  if (lower.includes('video unavailable') || lower.includes('this video is not available')) {
+    return translate('download.errorVideoUnavailable');
+  }
+  if (lower.includes('private video') || lower.includes('video is private')) {
+    return translate('download.errorVideoPrivate');
+  }
+  if (lower.includes('age-restricted') || lower.includes('age restricted')) {
+    return translate('download.errorVideoAgeRestricted');
+  }
+  if (lower.includes('not available in your country') || lower.includes('region') || lower.includes('restricted')) {
+    return translate('download.errorVideoRestricted');
+  }
+  if (lower.includes('sign in') || lower.includes('login') || lower.includes('authentication')) {
+    return translate('download.errorSignInRequired');
+  }
+  if (lower.includes('too many requests') || lower.includes('429') || lower.includes('rate limit')) {
+    return translate('download.errorRateLimited');
+  }
+  if (lower.includes('network') || lower.includes('connection') || lower.includes('econnrefused')) {
+    return translate('download.errorNetwork');
+  }
+
+  return translate('download.errorGeneric');
+}
+
 // Helper function to translate a key in main process
 function translate(key, options = {}) {
   const lang = getStoredLanguage();
@@ -1368,6 +1399,8 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
     // For single-video mode, explicitly avoid playlist behavior
     if (playlistMode !== 'playlist') {
       execArgs.push('--no-playlist', '--playlist-items', '1');
+    } else {
+      execArgs.push('--ignore-errors'); // Skip unavailable videos and continue with the rest
     }
 
     execArgs.push('-o', outputFilePath, '--progress');
@@ -1470,6 +1503,11 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
         // Strip the extension to get a clean title
         currentItemTitle = baseName.replace(/\.[^/.]+$/, '');
 
+        // Reset conversion signal so we send it again for each video in the playlist
+        if (isPlaylistDownload && currentItemIndex > 1) {
+          conversionSignalSent = false;
+        }
+
         event.reply('playlist-item-update', {
           index: currentItemIndex,
           total: totalItems,
@@ -1482,7 +1520,7 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
       // Clean up process reference on error
       activeDownloadProcesses.delete(processId);
       event.sender.downloadProcessId = null;
-      event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
+      event.reply('download-error', formatYtDlpError(error));
       // Trigger cleanup to prevent EBUSY errors on next operation
       performCleanup();
     })
@@ -1525,7 +1563,7 @@ ipcMain.on('download-audio', async (event, url, downloadPath, playlistMode = 'si
     console.error('yt-dlp execution error:', error);
     activeDownloadProcesses.delete(processId);
     event.sender.downloadProcessId = null;
-    event.reply('download-error', `Failed to download audio: ${error.message || 'Unknown error'}`);
+    event.reply('download-error', formatYtDlpError(error));
     
     // Trigger cleanup to prevent EBUSY errors on next operation
     performCleanup();
@@ -1828,6 +1866,8 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
     // For single-video mode, explicitly avoid playlist behavior
     if (playlistMode !== 'playlist') {
       execArgs.push('--no-playlist', '--playlist-items', '1');
+    } else {
+      execArgs.push('--ignore-errors'); // Skip unavailable videos and continue with the rest
     }
 
     execArgs.push('-o', outputFilePath, '--progress');
@@ -1930,6 +1970,11 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
         // Strip the extension to get a clean title
         currentItemTitle = baseName.replace(/\.[^/.]+$/, '');
 
+        // Reset conversion signal so we send it again for each video in the playlist
+        if (isPlaylistDownload && currentItemIndex > 1) {
+          conversionSignalSent = false;
+        }
+
         event.reply('playlist-item-update', {
           index: currentItemIndex,
           total: totalItems,
@@ -1942,7 +1987,7 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
       // Clean up process reference on error
       activeDownloadProcesses.delete(processId);
       event.sender.downloadProcessId = null;
-      event.reply('download-error', `Error: ${error.message || 'Unknown error'}`);
+      event.reply('download-error', formatYtDlpError(error));
       // Trigger cleanup to prevent EBUSY errors on next operation
       performCleanup();
     })
@@ -1986,7 +2031,7 @@ ipcMain.on('download-media', async (event, url, downloadPath, format, playlistMo
     console.error('yt-dlp execution error:', error);
     activeDownloadProcesses.delete(processId);
     event.sender.downloadProcessId = null;
-    event.reply('download-error', `Failed to download ${format}: ${error.message || 'Unknown error'}`);
+    event.reply('download-error', formatYtDlpError(error));
     
     // Trigger cleanup to prevent EBUSY errors on next operation
     performCleanup();

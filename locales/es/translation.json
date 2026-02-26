@@ -108,7 +108,15 @@
       "errorGenericPrefix": "Error:",
       "cannotCancel": "No se puede cancelar la descarga",
       "cancellationError": "Error al cancelar",
-      "noActiveDownloadToCancel": "No hay ninguna descarga activa que cancelar"
+      "noActiveDownloadToCancel": "No hay ninguna descarga activa que cancelar",
+      "errorVideoUnavailable": "Este vídeo no está disponible. Puede haber sido eliminado, hecho privado o restringido.",
+      "errorVideoPrivate": "Este vídeo es privado y no se puede descargar.",
+      "errorVideoAgeRestricted": "Este vídeo tiene restricción de edad y no se puede descargar.",
+      "errorVideoRestricted": "Este vídeo no está disponible en tu región o está restringido.",
+      "errorSignInRequired": "Este vídeo requiere iniciar sesión para verlo.",
+      "errorRateLimited": "Demasiadas solicitudes. Inténtalo de nuevo más tarde.",
+      "errorNetwork": "Error de red. Comprueba tu conexión e inténtalo de nuevo.",
+      "errorGeneric": "Error en la descarga. Inténtalo de nuevo o comprueba la URL."
     },
     "clipboard": {
       "errorRead": "No se puede leer el portapapeles"

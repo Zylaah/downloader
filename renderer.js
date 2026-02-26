@@ -662,6 +662,13 @@ downloadButton.addEventListener('click', () => {
             lastPlaylistIndex = index;
         }
 
+        // When starting a new video in playlist, reset conversion phase so the progress bar
+        // shows download progress for this video instead of staying stuck in convert animation
+        if (conversionPhaseActive) {
+            conversionPhaseActive = false;
+            document.querySelector('.progress-wrapper').classList.remove('indeterminate');
+        }
+
         // Highlight current and completed items in the playlist list
         if (playlistItemsList && playlistItemsList.children.length) {
             const children = Array.from(playlistItemsList.children);

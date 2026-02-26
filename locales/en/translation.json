@@ -108,7 +108,15 @@
       "errorGenericPrefix": "Error:",
       "cannotCancel": "Unable to cancel download",
       "cancellationError": "Error while cancelling",
-      "noActiveDownloadToCancel": "No active download to cancel"
+      "noActiveDownloadToCancel": "No active download to cancel",
+      "errorVideoUnavailable": "This video is not available. It may have been removed, made private, or restricted.",
+      "errorVideoPrivate": "This video is private and cannot be downloaded.",
+      "errorVideoAgeRestricted": "This video is age-restricted and cannot be downloaded.",
+      "errorVideoRestricted": "This video is not available in your region or is restricted.",
+      "errorSignInRequired": "This video requires sign-in to view.",
+      "errorRateLimited": "Too many requests. Please try again later.",
+      "errorNetwork": "Network error. Please check your connection and try again.",
+      "errorGeneric": "Download failed. Please try again or check the URL."
     },
     "clipboard": {
       "errorRead": "Unable to read clipboard"
