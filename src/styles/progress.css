@@ -22,20 +22,23 @@
     width: 0%;
 }
 
-/* Indeterminate state for conversion phase */
+/* Indeterminate state for conversion phase - visible sliding shimmer */
 .progress-wrapper.indeterminate #progressBarFill {
     width: 100% !important;
+    transition: none; /* Disable width transition so animation is not affected */
     background: linear-gradient(
         90deg,
         var(--primary) 0%,
-        rgba(217, 35, 15, 0.35) 40%,
-        var(--primary) 80%
+        var(--primary) 35%,
+        rgba(255, 255, 255, 0.5) 50%,
+        var(--primary) 65%,
+        var(--primary) 100%
     );
     background-size: 200% 100%;
-    animation: indeterminate-pulse 1.5s ease-in-out infinite;
+    animation: indeterminate-shimmer 1.2s linear infinite;
 }
 
-@keyframes indeterminate-pulse {
+@keyframes indeterminate-shimmer {
     0% {
         background-position: 200% 0;
     }

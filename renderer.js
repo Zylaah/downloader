@@ -90,7 +90,6 @@ let originalVideoUrl = ''; // Store the original URL (useful for playlists)
 let isPlaylistUrl = false; // Track if current selection is a playlist URL
 let playlistMode = 'single'; // 'single' | 'playlist'
 let conversionPhaseActive = false;
-let conversionPhaseStartTime = 0;
 let videoInfoController = null; // To control video info fetching
 let currentPlaylistItems = [];
 let isActivePlaylistDownload = false;
@@ -602,12 +601,6 @@ downloadButton.addEventListener('click', () => {
     window.electronAPI.downloadMedia(selectedVideoUrl, currentDownloadPath, selectedFormat, effectivePlaylistMode);
 
     window.electronAPI.onDownloadProgress((progressData) => {
-        console.log('[Renderer] Received download-progress event with data:', JSON.stringify(progressData)); 
-        if (conversionPhaseActive) {
-            console.log('[Renderer] Conversion phase active, ignoring download-progress event.');
-            return; 
-        }
-
         let actualDownloadPercent = 0;
         let isPreparing = false;
 
@@ -633,6 +626,19 @@ downloadButton.addEventListener('click', () => {
         // Ensure actualDownloadPercent is a number for calculations
         if (isNaN(actualDownloadPercent)) actualDownloadPercent = 0;
 
+        // When in conversion phase, only reset when we see progress for the NEXT video starting
+        // (percent 0 or very low). This keeps the conversion animation visible until we actually
+        // start downloading the next video, instead of resetting on playlist-item-update which
+        // can fire too early (when Destination line is output before conversion finishes).
+        if (conversionPhaseActive && isActivePlaylistDownload && actualDownloadPercent < 10) {
+            conversionPhaseActive = false;
+            const wrapper = document.querySelector('.progress-wrapper');
+            if (wrapper) wrapper.classList.remove('indeterminate');
+        }
+        if (conversionPhaseActive) {
+            return; // Still in conversion, ignore this progress event
+        }
+
         updateProgressBar(actualDownloadPercent);
 
         if (isPreparing) {
@@ -647,7 +653,6 @@ downloadButton.addEventListener('click', () => {
     window.electronAPI.onConversionPhaseStarted(() => {
         if (conversionPhaseActive) return; 
         conversionPhaseActive = true;
-        conversionPhaseStartTime = Date.now();
         progressBarText.textContent = window.i18n.t('download.converting');
         // Ensure bar is full so the indeterminate gradient animation is visible
         updateProgressBar(100);
@@ -665,22 +670,9 @@ downloadButton.addEventListener('click', () => {
             lastPlaylistIndex = index;
         }
 
-        // When starting a new video in playlist, reset conversion phase so the progress bar
-        // shows download progress for this video instead of staying stuck in convert animation.
-        // Use a minimum display time (400ms) so the conversion animation is visible.
-        if (conversionPhaseActive) {
-            const elapsed = Date.now() - conversionPhaseStartTime;
-            const doReset = () => {
-                conversionPhaseActive = false;
-                const wrapper = document.querySelector('.progress-wrapper');
-                if (wrapper) wrapper.classList.remove('indeterminate');
-            };
-            if (elapsed >= 400) {
-                doReset();
-            } else {
-                setTimeout(doReset, 400 - elapsed);
-            }
-        }
+        // Don't reset conversion phase here - playlist-item-update can fire when yt-dlp outputs
+        // the Destination line for the next video, which happens before conversion finishes.
+        // We reset in onDownloadProgress when we see percent < 5 (next video's download starting).
 
         // Highlight current and completed items in the playlist list
         if (playlistItemsList && playlistItemsList.children.length) {
