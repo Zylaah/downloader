@@ -24,7 +24,7 @@
   "author": "Bxthesda <lucien.schaeffer@hotmail.com>",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^39.8.10",
+    "electron": "^43.4.1",
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
